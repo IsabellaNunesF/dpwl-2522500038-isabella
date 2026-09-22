@@ -20,7 +20,7 @@ Jawaban:
 2) router mengarahkan request ke controller yang sesuai, controller membaca input dari user
 3) Controller memanggil model untuk mengambil, menyimpan ataupun memproses data ke database
 4) Model mengolah data tersebut pada database lalu dikembalikan hasilnya kepada Controller
-5) Model meneruskan data dari Model kepada View agar dapat ditampilkan
+5) Controller meneruskan data dari Model kepada View agar dapat ditampilkan
 6) View mengolah data tersebut dan mengembalikannya kepada user sebagai response akhir
 
 5. pemetaan satu atau beberapa bagian/fitur aplikasi DPW ke Model, Controller, dan View disertai alasan
