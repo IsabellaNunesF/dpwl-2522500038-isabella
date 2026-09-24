@@ -5,7 +5,7 @@
 // ==========================================
 if (!defined('BASE_URL')) {
   // Redirect ke controller menggunakan path absolut
-  header('Location: /contohdpwl/penyewa/controller/tmobil_controller.php');
+  header('Location: /DPWL-2522500038-Isabella/penyewa/controller/tmobil_controller.php');
   exit;
 }
 

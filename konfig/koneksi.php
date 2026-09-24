@@ -100,6 +100,6 @@ date_default_timezone_set('Asia/Jakarta');
 // Definisikan Base URL aplikasi (sesuaikan dengan folder project Anda di htdocs)
 // Tanda slash di akhir WAJIB ada.
 // Di konfig/koneksi.php
-define('BASE_URL', 'http://localhost/contohdpwl/');
-define('BASE_PATH', 'C:/laragon/www/contohdpwl/');
+define('BASE_URL', 'http://localhost/DPWL-2522500038-Isabella/');
+define('BASE_PATH', 'C:/laragon/www/DPWL-2522500038-Isabella/');
 define('UPLOAD_DIR', BASE_PATH . 'uploads/');

@@ -4,7 +4,7 @@
 // ==========================================
 if (!defined('BASE_URL')) {
   // PERBAIKAN: Gunakan path absolut karena BASE_URL belum terdefinisi
-  header('Location: /contohdpwl/penyewa/controller/tmobil_controller.php');
+  header('Location: /DPWL-2522500038-Isabella/penyewa/controller/tmobil_controller.php');
   exit;
 }
 
