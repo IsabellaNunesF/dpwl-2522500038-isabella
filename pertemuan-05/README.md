@@ -46,7 +46,6 @@ Pada Tahap B, telah dilakukan penambahan tiga konfigurasi *route* baru pada apli
 - Fitur P4 (login & admin) tetap berjalan normal.
 
 # Dokumentasi P5 - Tahap D (INSERT Data Kendaraan)
-
 ## Perubahan Berkas
 - `application/models/Mobil_model.php`: Menambahkan method `create()` dengan prepared statement untuk menyimpan data kendaraan baru.
 - `application/controllers/Mobil_controller.php`: Menambahkan method `tambah()`, `uploadFoto()`, `validateMobilInput()`, dan `hapusFotoBaru()` dengan penerapan pola PRG.
@@ -56,3 +55,13 @@ Pada Tahap B, telah dilakukan penambahan tiga konfigurasi *route* baru pada apli
 - Formulir tambah kendaraan tampil saat mengklik tombol **Tambah Kendaraan**.
 - Data kendaraan dan unggahan foto berhasil tersimpan ke basis data `t_mobil` serta folder `uploads/mobil/`.
 - Mekanisme PRG berjalan lancar menampilkan pesanan sukses via flash message.
+
+# Dokumentasi P5 - Tahap E (UPDATE Data Kendaraan)
+## Perubahan Berkas
+- `application/models/Mobil_model.php`: Menambahkan method `findByNoPlat()` untuk mengambil data spesifik berdasarkan nomor plat dan `update()` untuk memperbarui data pada tabel `t_mobil`.
+- `application/controllers/Mobil_controller.php`: Menambahkan method `ubah()` untuk menangani pembacaan data lama, validasi input perubahan, penggantian/penghapusan berkas foto lama jika diunggah foto baru, dan penanganan pola PRG.
+
+## Hasil Pengujian
+- Menekan tombol **Ubah** pada baris data tabel berhasil menampilkan formulir beserta isi data lama kendaraan yang dipilih (dengan nomor plat bersifat *readonly*).
+- Memperbarui data kendaraan tanpa mengunggah foto baru berhasil tersimpan tanpa merusak/menghapus foto lama.
+- Mengunggah foto baru saat proses ubah berhasil menggantikan file foto lama serta secara otomatis menghapus berkas fisik foto lama dari direktori `uploads/mobil/`.
