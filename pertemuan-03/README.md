@@ -1,18 +1,18 @@
-### Integrasi Route P3
+### Penerapan Post-Redirect-Get (PRG)
 
-Pada tahap ini dilakukan integrasi route untuk komponen autentikasi dan halaman administrasi.
-Route yang ditambahkan:
-- /login -> route login -> Controller Auth, method login
-- /auth/login -> route auth/login -> Controller Auth, method login
-- /auth/logout -> route auth/logout -> Controller Auth, method logout
-- /admin -> route admin -> Controller Admin, method index
-index.php tetap digunakan sebagai satu-satunya front controller aplikasi.
+Pada tahap ini dilakukan penelusuran dan pengujian pola Post-Redirect-Get (PRG) pada proses autentikasi.
+Penerapan PRG:
+- Login berhasil menggunakan POST untuk proses autentikasi, kemudian redirect ke /admin dan dilanjutkan dengan GET.
+- Logout menggunakan POST untuk mengakhiri session, kemudian redirect ke /auth/login dan dilanjutkan dengan GET.
+Login gagal tidak menggunakan redirect karena Controller mengembalikan View login beserta pesan kesalahan pada request tersebut.
+Pengujian aktual dilakukan terhadap:
 
-Pengujian integrasi route dilakukan terhadap:
 | No. | Skenario Pengujian | Hasil Aktual | Status |
 |---|---|---|---|
-| 1 | Akses `index.php/login` | Diarahkan melalui route login ke Controller Auth, method login | Sesuai |
-| 2 | Login menggunakan akun admin yang valid | Proses autentikasi berjalan dan diarahkan ke halaman admin | Sesuai |
-| 3 | Akses `index.php/admin` setelah login | Diarahkan melalui route admin/index dan halaman admin ditampilkan | Sesuai |
-| 4 | Logout melalui halaman administrasi | Session autentikasi admin diakhiri | Sesuai |
-| 5 | Akses `index.php/admin` setelah logout | Akses ditolak dan diarahkan ke halaman login | Sesuai |
+| 1 | Login dengan kredensial valid | Berhasil autentikasi via POST dan diarahkan redirect ke halaman admin (GET) | Sesuai |
+| 2 | Login dengan kredensial tidak valid | Menampilkan kembali halaman login beserta pesan error tanpa melakukan redirect | Sesuai |
+| 3 | Logout melalui halaman administrasi | Berhasil mengakhiri session via POST dan di-redirect kembali ke halaman login (GET) | Sesuai |
+| 4 | Akses halaman admin setelah logout | Akses ditolak dan diarahkan ke halaman login | Sesuai |
+
+### Perbaikan
+Tidak ditemukan masalah pada saat pengujian M.3.
