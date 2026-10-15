@@ -65,3 +65,14 @@ Pada Tahap B, telah dilakukan penambahan tiga konfigurasi *route* baru pada apli
 - Menekan tombol **Ubah** pada baris data tabel berhasil menampilkan formulir beserta isi data lama kendaraan yang dipilih (dengan nomor plat bersifat *readonly*).
 - Memperbarui data kendaraan tanpa mengunggah foto baru berhasil tersimpan tanpa merusak/menghapus foto lama.
 - Mengunggah foto baru saat proses ubah berhasil menggantikan file foto lama serta secara otomatis menghapus berkas fisik foto lama dari direktori `uploads/mobil/`.
+
+# Dokumentasi P5 - Tahap F (DELETE Data Kendaraan)
+## Perubahan Berkas
+- `application/models/Mobil_model.php`: Menambahkan method `delete()` untuk menghapus baris data kendaraan berdasarkan nomor plat dengan prepared statement.
+- `application/controllers/Mobil_controller.php`: Menambahkan method `hapus()` yang memvalidasi metode HTTP POST, menghapus record di basis data, dan menghapus seluruh berkas fisik foto kendaraan terkait dari direktori `uploads/mobil/`.
+
+## Hasil Pengujian
+- Menekan tombol **Hapus** pada tabel data memicu dialog konfirmasi JavaScript.
+- Setelah dikonfirmasi, data kendaraan berhasil terhapus dari tabel database `t_mobil`.
+- Seluruh foto kendaraan yang terhubung (`ft_depan`, `ft_blkg`, `ft_interior`) berhasil dihapus secara permanen dari folder `uploads/mobil/`.
+- Halaman langsung diarahkan kembali ke daftar kendaraan (*PRG Redirect*) dengan menampilkan flash message sukses.

@@ -132,4 +132,17 @@ class Mobil_model
 
     return $success;
   }
+
+  // P5: Menghapus data kendaraan berdasarkan nomor plat (DELETE)
+  public function delete(string $noPlat): bool
+  {
+    $sql = "DELETE FROM t_mobil WHERE no_plat = ?";
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param('s', $noPlat);
+
+    $success = $stmt->execute();
+    $stmt->close();
+
+    return $success;
+  }
 }

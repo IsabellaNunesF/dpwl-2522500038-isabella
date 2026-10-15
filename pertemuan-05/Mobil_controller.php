@@ -214,4 +214,130 @@ class Mobil_controller extends Controller
     header('Location: ' . site_url('admin/mobil'));
     exit;
   }
+
+  public function ubah(string $noPlat): void
+  {
+    require_admin_login();
+
+    $noPlat = rawurldecode($noPlat);
+    $mobilLama = $this->model->findByNoPlat($noPlat);
+
+    if ($mobilLama === null) {
+      set_flash_message('danger', 'Data kendaraan tidak ditemukan.');
+      header('Location: ' . site_url('admin/mobil'));
+      exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+      $this->renderMobil('ubah', $mobilLama);
+      return;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+      http_response_code(405);
+      exit('Metode request tidak diizinkan.');
+    }
+
+    $data = [
+      'no_plat'     => $noPlat,
+      'nm_mobil'    => trim((string)($_POST['nm_mobil'] ?? '')),
+      'nkursi'      => filter_var($_POST['nkursi'] ?? null, FILTER_VALIDATE_INT),
+      'nbagasi'     => filter_var($_POST['nbagasi'] ?? null, FILTER_VALIDATE_INT),
+      'jns_mobil'   => (string)($_POST['jns_mobil'] ?? ''),
+      'transmisi'   => (string)($_POST['transmisi'] ?? ''),
+      'thn_buat'    => filter_var($_POST['thn_buat'] ?? null, FILTER_VALIDATE_INT),
+      'ft_depan'    => $mobilLama['ft_depan'],
+      'ft_blkg'     => $mobilLama['ft_blkg'],
+      'ft_interior' => $mobilLama['ft_interior'],
+      'hrg_hari'    => filter_var($_POST['hrg_hari'] ?? null, FILTER_VALIDATE_INT),
+      'cttn_unit'   => trim((string)($_POST['cttn_unit'] ?? '')),
+      'status_unit' => (string)($_POST['status_unit'] ?? ''),
+    ];
+
+    $error = $this->validateMobilInput($data);
+    if ($error !== null) {
+      $this->renderMobil('ubah', array_merge($mobilLama, $data), $error);
+      return;
+    }
+
+    $uploadedFiles = [];
+    $fotoLamaUntukDihapus = [];
+
+    foreach (['ft_depan', 'ft_blkg', 'ft_interior'] as $field) {
+      $upload = $this->uploadFoto($field);
+      if (!$upload['success']) {
+        $this->hapusFotoBaru($uploadedFiles);
+        $this->renderMobil('ubah', array_merge($mobilLama, $data), $upload['error']);
+        return;
+      }
+
+      if ($upload['filename'] !== null) {
+        $uploadedFiles[] = $upload['filename'];
+        if (!empty($mobilLama[$field])) {
+          $fotoLamaUntukDihapus[] = $mobilLama[$field];
+        }
+        $data[$field] = $upload['filename'];
+      }
+    }
+
+    try {
+      $success = $this->model->update($noPlat, $data);
+    } catch (Throwable $e) {
+      $success = false;
+    }
+
+    if (!$success) {
+      $this->hapusFotoBaru($uploadedFiles);
+      $this->renderMobil('ubah', array_merge($mobilLama, $data), 'Data kendaraan gagal diperbarui. Periksa kembali data yang dimasukkan.');
+      return;
+    }
+
+    $this->hapusFotoBaru($fotoLamaUntukDihapus);
+    set_flash_message('success', 'Data kendaraan berhasil diperbarui.');
+    header('Location: ' . site_url('admin/mobil'));
+    exit;
+  }
+
+  public function hapus(string $noPlat): void
+  {
+    require_admin_login();
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+      http_response_code(405);
+      exit('Metode request tidak diizinkan.');
+    }
+
+    $noPlat = rawurldecode($noPlat);
+    $mobilLama = $this->model->findByNoPlat($noPlat);
+
+    if ($mobilLama === null) {
+      set_flash_message('danger', 'Data kendaraan tidak ditemukan.');
+      header('Location: ' . site_url('admin/mobil'));
+      exit;
+    }
+
+    try {
+      $success = $this->model->delete($noPlat);
+    } catch (Throwable $e) {
+      $success = false;
+    }
+
+    if (!$success) {
+      set_flash_message('danger', 'Data kendaraan gagal dihapus.');
+      header('Location: ' . site_url('admin/mobil'));
+      exit;
+    }
+
+    $fotoDihapus = array_filter([
+      $mobilLama['ft_depan'] ?? null,
+      $mobilLama['ft_blkg'] ?? null,
+      $mobilLama['ft_interior'] ?? null,
+    ]);
+
+    $this->hapusFotoBaru($fotoDihapus);
+
+    set_flash_message('success', 'Data kendaraan berhasil dihapus.');
+    header('Location: ' . site_url('admin/mobil'));
+    exit;
+  }
 }
