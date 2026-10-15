@@ -33,3 +33,14 @@ Pada Tahap B, telah dilakukan penambahan tiga konfigurasi *route* baru pada apli
 ## Hasil Pengujian
 - **Pengujian Route:** Saat mengakses URL `admin/mobil/tambah`, `admin/mobil/ubah/BN1234XX`, maupun `admin/mobil/hapus/BN1234XX`, sistem memberikan respon pesan *"Controller tidak ditemukan."*.
 - **Status Akhir Tahap B:** Hasil respon tersebut merupakan **kondisi yang diharapkan** (bukan kesalahan) karena `Mobil_controller.php` belum dibuat dan baru akan diimplementasikan pada Tahap C.
+# Dokumentasi P5 - Tahap C (READ Data Kendaraan)
+
+## Perubahan Berkas
+- `application/models/Mobil_model.php`: Menambahkan method `getAll()` untuk mengambil data `t_mobil`.
+- `application/controllers/Mobil_controller.php`: Membuat controller & proteksi auth untuk alur `admin/mobil`.
+- `application/views/admin/mobil_view.php`: Membuat antarmuka tabel data kendaraan (AdminLTE).
+
+## Hasil Pengujian
+- URL `admin/mobil` berhasil dibuka tanpa error.
+- Data dari `t_mobil` tampil rapi di tabel.
+- Fitur P4 (login & admin) tetap berjalan normal.
