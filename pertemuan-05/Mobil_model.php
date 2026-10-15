@@ -1,36 +1,84 @@
 <?php
+
 class Mobil_model
 {
   private mysqli $db;
+
   public function __construct()
   {
     global $db;
     $this->db = $db;
   }
-  // P5: membaca seluruh data mobil untuk halaman daftar
+
+  // P5: membaca seluruh data mobil untuk halaman daftar (READ)
   public function getAll(): array
   {
     $sql = "SELECT
-no_plat,
-nm_mobil,
-nkursi,
-nbagasi,
-jns_mobil,
-transmisi,
-thn_buat,
-ft_depan,
-ft_blkg,
-ft_interior,
-hrg_hari,
-cttn_unit,
-status_unit
-FROM t_mobil
-ORDER BY no_plat ASC";
+            no_plat,
+            nm_mobil,
+            nkursi,
+            nbagasi,
+            jns_mobil,
+            transmisi,
+            thn_buat,
+            ft_depan,
+            ft_blkg,
+            ft_interior,
+            hrg_hari,
+            cttn_unit,
+            status_unit
+            FROM t_mobil
+            ORDER BY no_plat ASC";
+
     $stmt = $this->db->prepare($sql);
     $stmt->execute();
     $result = $stmt->get_result();
     $rows = $result->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
+
     return $rows;
+  }
+
+  // P5: untuk menyimpan data kendaraan (INSERT)
+  public function create(array $data): bool
+  {
+    $sql = "INSERT INTO t_mobil (
+            no_plat,
+            nm_mobil,
+            nkursi,
+            nbagasi,
+            jns_mobil,
+            transmisi,
+            thn_buat,
+            ft_depan,
+            ft_blkg,
+            ft_interior,
+            hrg_hari,
+            cttn_unit,
+            status_unit
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param(
+      'ssiississsiss',
+      $data['no_plat'],
+      $data['nm_mobil'],
+      $data['nkursi'],
+      $data['nbagasi'],
+      $data['jns_mobil'],
+      $data['transmisi'],
+      $data['thn_buat'],
+      $data['ft_depan'],
+      $data['ft_blkg'],
+      $data['ft_interior'],
+      $data['hrg_hari'],
+      $data['cttn_unit'],
+      $data['status_unit']
+    );
+
+    $success = $stmt->execute();
+    $stmt->close();
+
+    return $success;
   }
 }

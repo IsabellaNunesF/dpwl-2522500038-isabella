@@ -44,3 +44,15 @@ Pada Tahap B, telah dilakukan penambahan tiga konfigurasi *route* baru pada apli
 - URL `admin/mobil` berhasil dibuka tanpa error.
 - Data dari `t_mobil` tampil rapi di tabel.
 - Fitur P4 (login & admin) tetap berjalan normal.
+
+# Dokumentasi P5 - Tahap D (INSERT Data Kendaraan)
+
+## Perubahan Berkas
+- `application/models/Mobil_model.php`: Menambahkan method `create()` dengan prepared statement untuk menyimpan data kendaraan baru.
+- `application/controllers/Mobil_controller.php`: Menambahkan method `tambah()`, `uploadFoto()`, `validateMobilInput()`, dan `hapusFotoBaru()` dengan penerapan pola PRG.
+- `application/views/admin/mobil_view.php`: Menambahkan formulir tambah kendaraan beserta fitur unggah foto.
+
+## Hasil Pengujian
+- Formulir tambah kendaraan tampil saat mengklik tombol **Tambah Kendaraan**.
+- Data kendaraan dan unggahan foto berhasil tersimpan ke basis data `t_mobil` serta folder `uploads/mobil/`.
+- Mekanisme PRG berjalan lancar menampilkan pesanan sukses via flash message.
