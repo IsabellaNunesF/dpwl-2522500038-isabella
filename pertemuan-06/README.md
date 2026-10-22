@@ -102,3 +102,31 @@
 * Sistem secara otomatis menolak dan menampilkan pesan peringatan jika konfirmasi password tidak cocok dengan password yang dimasukkan, sehingga akun tidak dapat dibuat atau digunakan untuk login.
 * Penanganan kesalahan untuk input tidak valid dan username duplikat berjalan sesuai ketentuan.
 * Status: **Berhasil**
+
+---
+
+## Tahap E: Mengimplementasikan Login, Sesi, dan Logout Penyewa
+
+### 1. Tahap Pengembangan
+* Menambahkan route `$route['auth/login-penyewa']` dan `$route['auth/logout-penyewa']` pada `application/config/routes.php`.
+* Menambahkan method `findForLogin()` pada `Penyewa_model.php` untuk mengambil data autentikasi penyewa dari basis data.
+* Menambahkan method `loginPenyewa()` dan `logoutPenyewa()` pada `Auth.php` untuk verifikasi enkripsi password (`password_verify()`), regenerasi ID sesi, pengelolaan variabel sesi (`$_SESSION['penyewa_user_plg']`), serta pesan notifikasi navigasi.
+* Membuat tampilan halaman login pada `application/views/auth/login_penyewa.php` dan menyesuaikan navigasi utama pada `navbar.php` untuk merespons status sesi penyewa.
+
+### 2. Berkas / Komponen yang Ditambahkan & Diubah
+* **Config:** `application/config/routes.php`
+* **Model:** `application/models/Penyewa_model.php` (menambahkan method `findForLogin()`)
+* **Controller:** `application/controllers/Auth.php` (menambahkan method `loginPenyewa()` dan `logoutPenyewa()`)
+* **View:** `application/views/auth/login_penyewa.php` dan `application/views/katalog/navbar.php`
+
+### 3. Langkah Pengujian
+1. Membuka URL `http://localhost/dpwl-2522500038/index.php/auth/login-penyewa`.
+2. Menguji login menggunakan kombinasi username dan password yang salah untuk memastikan munculnya pesan peringatan error.
+3. Menguji login dengan data akun penyewa yang valid, lalu memeriksa pengalihan kembali ke halaman katalog beserta munculnya ucapan selamat datang dan perubahan ikon profil pada header.
+4. Menguji klik tombol Logout untuk memastikan sesi login telah dihapus, ikon profil menghilang, dan halaman kembali menampilkan pilihan Login/Registrasi.
+
+### 4. Hasil Aktual Pengujian
+* Autentikasi penyewa berfungsi dengan presisi; sistem menolak kredensial yang salah dan berhasil membuka sesi untuk akun yang valid.
+* Sesi login berhasil diperbarui secara otomatis dan navigasi aplikasi menyesuaikan tampilan tombol sesuai status login penyewa.
+* Fitur logout berhasil membersihkan data sesi penyewa dengan aman.
+* Status: **Berhasil**
