@@ -130,3 +130,60 @@
 * Sesi login berhasil diperbarui secara otomatis dan navigasi aplikasi menyesuaikan tampilan tombol sesuai status login penyewa.
 * Fitur logout berhasil membersihkan data sesi penyewa dengan aman.
 * Status: **Berhasil**
+
+---
+
+## Tahap F: Mengimplementasikan Profil dan Pembaruan Data Penyewa
+
+### 1. Tahap Pengembangan
+* Menambahkan route `$route['penyewa/profil']` pada `application/config/routes.php`.
+* Menambahkan method `getProfil()`, `verifikasiPassword()`, dan `updateProfil()` pada `Penyewa_model.php` untuk mendukung pengambilan data profil serta pembaruan data penyewa dan kata sandi.
+* Membuat `Penyewa_controller.php` yang dilengkapi pemeriksaan autentikasi sesi, validasi kelayakan input data, penanganan ganti password, serta fungsi unggah dan verifikasi format berkas foto KTP dan SIM A (JPEG, PNG, WEBP maks 5 MB).
+* Membuat tampilan halaman profil pada `application/views/penyewa/profil.php` untuk menampilkan rincian akun, formulir pembaruan data, kolom ganti password, serta pratinjau dokumen identitas yang telah diunggah.
+
+### 2. Berkas / Komponen yang Ditambahkan & Diubah
+* **Config:** `application/config/routes.php`
+* **Model:** `application/models/Penyewa_model.php` (menambahkan method `getProfil()`, `verifikasiPassword()`, dan `updateProfil()`)
+* **Controller:** `application/controllers/Penyewa_controller.php`
+* **View:** `application/views/penyewa/profil.php`
+
+### 3. Langkah Pengujian
+1. Mengakses halaman profil melalui URL `http://localhost/dpwl-2522500038/index.php/penyewa/profil` saat dalam keadaan belum login untuk memastikan proteksi pembatasan akses berjalan.
+2. Login sebagai penyewa, lalu mengklik ikon profil di header untuk membuka formulir data diri.
+3. Menguji pembaruan data diri (Nama Lengkap, Nomor HP, NIK, dan Alamat Lengkap) serta mengunggah foto KTP dan SIM A.
+4. Menguji fitur ganti password dengan memasukkan password saat ini yang sesuai beserta password baru.
+5. Menguji skenario penanganan input tidak valid (seperti format NIK yang tidak 16 digit, password lama yang salah, atau ekstensi berkas foto yang tidak diizinkan).
+
+### 4. Hasil Aktual Pengujian
+* Proteksi halaman profil berjalan dengan baik; pengguna yang belum login secara otomatis diarahkan ke halaman login.
+* Pembaruan data profil dan dokumen identitas (KTP & SIM A) berhasil tersimpan ke basis data dan berkas foto tersimpan secara benar pada direktori `uploads/penyewa/`.
+* Fitur ganti password dan validasi input (penanganan galat) berfungsi sesuai dengan aturan keamanan yang diterapkan.
+* Status: **Berhasil**
+
+---
+
+## Tahap G: Menghilangkan index.php dari URL Aplikasi
+
+### 1. Tahap Pengembangan
+* Membuat berkas `.htaccess` pada direktori root proyek untuk mengaktifkan modul Apache RewriteEngine dan mengarahkan semua URL bersih (*clean URL*) ke front controller `index.php`.
+* Memodifikasi logika penanganan URI pada berkas `index.php` agar mampu membaca variabel `$_GET['route']` atau `PATH_INFO`.
+* Mengosongkan nilai konfigurasi `$config['index_page'] = '';` pada `application/config/config.php`.
+* Mengubah implementasi method `site_url()` pada `application/helpers/url_helper.php` agar tidak lagi menyisipkan string `index.php` saat membentuk tautan aplikasi.
+* Memperbarui route `$route['default_controller'] = 'Katalog_controller';` pada `application/config/routes.php`.
+
+### 2. Berkas / Komponen yang Ditambahkan & Diubah
+* **Root File:** `.htaccess`
+* **Root File:** `index.php`
+* **Config:** `application/config/config.php`
+* **Helper:** `application/helpers/url_helper.php`
+* **Config:** `application/config/routes.php`
+
+### 3. Langkah Pengujian
+1. Membuka URL utama aplikasi tanpa menyertakan `index.php` (`http://localhost/DPWL-2522500038/`).
+2. Menguji navigasi antarhalaman seperti Katalog, Detail Kendaraan, Registrasi, Login, dan Profil.
+3. Memeriksa baris alamat (*address bar*) untuk memastikan seluruh URL bersih dari penulisan `index.php`.
+4. Memastikan seluruh aset gambar, CSS, dan JavaScript tetap termuat sempurna tanpa adanya error 404/broken link.
+### 4. Hasil Aktual Pengujian
+* Penulisan `index.php` berhasil dihilangkan dari seluruh URL aplikasi.
+* Routing internal aplikasi dan pemuatan aset antarmuka berjalan lancar tanpa mengalami kendala.
+* Status: **Berhasil**

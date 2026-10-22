@@ -13,8 +13,9 @@ require_once SYSPATH . 'core/Controller.php';
 require_once SYSPATH . 'core/Router.php';
 
 $route = [];
-require APPPATH . 'config/routes.php';
-$uri = $_SERVER['PATH_INFO'] ?? '';
+require APPPATH . 'config/routes.php'; {
+  // P6 menghilangkan penulisan index.php pada URL aplikasi
+  /* $uri = $_SERVER['PATH_INFO'] ?? '';
 if ($uri === '') {
 $requestPath = parse_url(
 $_SERVER['REQUEST_URI'] ?? '/',
@@ -24,6 +25,8 @@ $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 if (str_starts_with($requestPath, $scriptName)) {
 $uri = substr($requestPath, strlen($scriptName));
 }
+} */
+  $uri = $_GET['route'] ?? ($_SERVER['PATH_INFO'] ?? '');
 }
 $router = new Router($route);
 $router->dispatch($uri);
