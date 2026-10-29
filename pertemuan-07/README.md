@@ -1,0 +1,1 @@
+A. Mempersiapkan artefak P6 untuk pengerjaan P7
