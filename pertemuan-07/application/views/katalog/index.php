@@ -276,11 +276,43 @@ carousel" role="button" data-bs-slide="next">
                   <?php endif; ?>
                 </p>
                 <?php if ($mobil['status_unit'] === 'tersedia'): ?>
-                  <button type="button" class="btn btn-success w-100" disabled>
-                    Tambah ke Keranjang
-                  </button>
+                  <?php if (!empty($_SESSION['penyewa_user_plg'])): ?>
+                    <form
+                      action="<?= htmlspecialchars(
+                                site_url('transaksi/tambah'),
+                                ENT_QUOTES,
+                                'UTF-8'
+                              ) ?>"
+                      method="POST">
+                      <input
+                        type="hidden"
+                        name="no_plat"
+                        value="<?= htmlspecialchars(
+                                  (string) $mobil['no_plat'],
+                                  ENT_QUOTES,
+                                  'UTF-8'
+                                ) ?>">
+                      <input
+                        type="hidden"
+                        name="return_to"
+                        value="katalog">
+                      <button type="submit" class="btn btn-success w-100">
+                        Tambah ke Keranjang
+                      </button>
+                    </form>
+                  <?php else: ?>
+                    <button
+                      type="button"
+                      class="btn btn-success w-100"
+                      disabled>
+                      Tambah ke Keranjang
+                    </button>
+                  <?php endif; ?>
                 <?php else: ?>
-                  <button type="button" class="btn btn-secondary w-100" disabled>
+                  <button
+                    type="button"
+                    class="btn btn-secondary w-100"
+                    disabled>
                     Tidak Dapat Disewa
                   </button>
                 <?php endif; ?>
