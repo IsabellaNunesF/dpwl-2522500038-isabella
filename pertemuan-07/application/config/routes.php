@@ -32,3 +32,5 @@ $route['auth/login-penyewa'] = 'Auth/loginPenyewa';
 $route['auth/logout-penyewa'] = 'Auth/logoutPenyewa';
 $route['penyewa/profil'] = 'Penyewa_controller/profil';
 $route['default_controller'] = 'Katalog_controller';
+// Route P7 - Transaksi dan Keranjang
+$route['transaksi/tambah'] = 'Transaksi_controller/tambah';
