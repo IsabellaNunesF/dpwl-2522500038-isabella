@@ -34,3 +34,8 @@ $route['penyewa/profil'] = 'Penyewa_controller/profil';
 $route['default_controller'] = 'Katalog_controller';
 // Route P7 - Transaksi dan Keranjang
 $route['transaksi/tambah'] = 'Transaksi_controller/tambah';
+$route['transaksi/keranjang'] = 'Transaksi_controller/keranjang';
+$route['transaksi/perbarui-periode'] = 'Transaksi_controller/perbaruiPeriode';
+$route['transaksi/hapus'] = 'Transaksi_controller/hapus';
+$route['transaksi/hapus/(:any)'] = 'Transaksi_controller/hapus/$1';
+$route['transaksi/checkout'] = 'Transaksi_controller/checkout';
