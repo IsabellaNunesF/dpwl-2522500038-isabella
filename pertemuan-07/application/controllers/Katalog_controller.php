@@ -26,4 +26,24 @@ class Katalog_controller extends Controller
 
     $this->view('katalog/index', $data);
   }
+  public function detail(string $noPlat): void
+  {
+    $mobil = $this->mobilModel->findByNoPlat($noPlat);
+
+    if ($mobil === null) {
+      show_404();
+      return;
+    }
+
+    $userPlg = trim((string) ($_SESSION['penyewa_user_plg'] ?? ''));
+
+    $data = [
+      'mobil' => $mobil,
+      'jumlahKeranjang' => $userPlg === ''
+        ? 0
+        : $this->transaksiModel->getJumlahMobilKeranjang($userPlg)
+    ];
+
+    $this->view('katalog/detail', $data);
+  }
 }

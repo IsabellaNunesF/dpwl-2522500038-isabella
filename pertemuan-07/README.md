@@ -28,3 +28,14 @@
   3. Memeriksa penanganan pesan notifikasi (*flash message*) saat penambahan barang atau error.
 * **Hasil Aktual:** Badge jumlah keranjang pada header/navbar secara dinamis menampilkan total kendaraan dalam keranjang milik penyewa aktif. Pesan notifikasi sukses/error tampil dan dapat ditutup (*dismissible*).
 * **Status:** Berhasil
+### 5. Tahap E: Integrasi Proses Penambahan Kendaraan ke Keranjang
+* **Langkah Pengujian:**
+  1. Login sebagai penyewa, kemudian buka halaman katalog.
+  2. Pilih kendaraan dengan status `tersedia` dan klik tombol **Tambah ke Keranjang**.
+  3. Pastikan aplikasi kembali ke halaman katalog dan menampilkan notifikasi bahwa kendaraan berhasil ditambahkan.
+  4. Periksa tabel `t_sewa` dan `t_pilih` melalui phpMyAdmin untuk memastikan data transaksi dan kendaraan tersimpan dengan `kode_sewa` yang sama.
+  5. Tambahkan kendaraan lain dan pastikan kendaraan tersebut masuk ke keranjang aktif yang sama.
+  6. Coba tambahkan kendaraan yang sama untuk kedua kalinya dan pastikan sistem menolak penambahan duplikat.
+* **Hasil Aktual:**
+  Proses penambahan kendaraan ke keranjang berhasil dijalankan. Data transaksi tersimpan pada tabel `t_sewa`, sedangkan data kendaraan yang dipilih tersimpan pada tabel `t_pilih` dengan `kode_sewa` yang sesuai. Penambahan kendaraan lain menggunakan keranjang aktif yang sama, dan sistem berhasil mencegah penambahan kendaraan yang sama secara duplikat. Hasil pemeriksaan melalui phpMyAdmin menunjukkan bahwa penyimpanan data telah sesuai dengan ketentuan.
+* **Status:** Berhasil
