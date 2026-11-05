@@ -47,9 +47,8 @@
         <a href="<?= htmlspecialchars(site_url('admin/mobil'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fa fa-car"></i> <span>Manajemen Kendaraan</span>
         </a>
-      </li>
       <li>
-        <a href="<?= base_url('penyewa') ?>">
+        <a href="<?= htmlspecialchars(site_url('admin/mpenyewa'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fa fa-users"></i>
           <span>Manajemen Penyewa</span>
         </a>

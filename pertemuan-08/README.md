@@ -33,3 +33,16 @@ statement untuk mengakses tabel t_penyewa.
 ### Hasil
 Model Penyewa berhasil dikembangkan mengikuti pola
 Mobil_model yang telah tersedia.
+## Tahap 4:  View Manajemen Penyewa
+### Implementasi
+Membuat halaman Manajemen Penyewa pada sisi admin menggunakan `Mpenyewa_view.php` dengan tampilan mengikuti Manajemen Kendaraan (Mobil_view).
+### Pengujian
+- Halaman Manajemen Penyewa berhasil ditampilkan.
+- Data penyewa berhasil ditampilkan sesuai database.
+- Tabel menggunakan DataTables (search, sorting, pagination).
+- Tombol tambah, ubah, dan hapus tersedia.
+- Tampilan tabel disesuaikan dengan Manajemen Kendaraan.
+- Header dan breadcrumb berhasil disesuaikan.
+- Tampilan tabel berhasil diperbaiki.
+### Hasil
+Halaman Manajemen Penyewa berhasil dibuat dan diverifikasi.
