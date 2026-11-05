@@ -47,4 +47,5 @@ $route['admin/mpenyewa'] = 'Mpenyewa_controller/index';
 $route['admin/mpenyewa/tambah'] = 'Mpenyewa_controller/tambah';
 $route['admin/mpenyewa/ubah/(:any)'] = 'Mpenyewa_controller/ubah/$1';
 $route['admin/mpenyewa/hapus/(:any)'] = 'Mpenyewa_controller/hapus/$1';
-$route['penyewa/profil'] = 'Mpenyewa_controller/profil';
+// Foto KTP/SIM dilayani lewat controller (hanya admin atau pemilik foto)
+$route['penyewa/foto/(:any)/(:any)'] = 'Mpenyewa_controller/foto/$1/$2';

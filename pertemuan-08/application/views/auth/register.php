@@ -118,8 +118,6 @@ require __DIR__ . '/../katalog/navbar.php';
                 id="nik"
                 name="nik"
                 maxlength="16"
-                minlength="16"
-                pattern="[0-9]{16}"
                 inputmode="numeric"
                 value="<?= $e($old['nik'] ?? '') ?>"
                 required>

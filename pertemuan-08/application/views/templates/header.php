@@ -1,4 +1,7 @@
 <?php
+$username = $_SESSION['admin_username']
+  ?? $_SESSION['penyewa_user_plg']
+  ?? 'Pengguna';
 
 /** @var string $username */
 $adminlte_url = base_url('../template/AdminLTE-2.4.18/');
@@ -49,7 +52,9 @@ $adminlte_url = base_url('../template/AdminLTE-2.4.18/');
                 </li>
                 <li class="user-footer">
                   <div class="pull-right">
-                    <a href="#" class="btn btn-default btn-flat">Sign out</a>
+                    <form method="post" action="<?= htmlspecialchars(site_url('auth/logout'), ENT_QUOTES, 'UTF-8') ?>">
+                      <button type="submit" class="btn btn-default btn-flat">Sign out</button>
+                    </form>
                   </div>
                 </li>
               </ul>

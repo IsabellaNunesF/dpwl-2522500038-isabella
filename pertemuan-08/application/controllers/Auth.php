@@ -155,9 +155,9 @@ class Auth extends Controller
             ]);
             return;
         }
-        require_once APPPATH . 'models/Penyewa_model.php';
+        require_once APPPATH . 'models/Mpenyewa_model.php';
         try {
-            $model = new Penyewa_model();
+            $model = new Mpenyewa_model();
             if ($model->findByUserPlg($userPlg) !== null) {
                 $this->view('auth/register', [
                     'error' => 'Username sudah digunakan.',
@@ -220,10 +220,10 @@ class Auth extends Controller
             ]);
             return;
         }
-        require_once APPPATH . 'models/Penyewa_model.php';
+        require_once APPPATH . 'models/Mpenyewa_model.php';
         try {
-            $model = new Penyewa_model();
-            $penyewa = $model->findForLogin($userPlg);
+            $model = new Mpenyewa_model();
+            $penyewa = $model->findByUserPlg($userPlg);
             if (
                 !$penyewa ||
                 !password_verify($password, $penyewa['sandi'])

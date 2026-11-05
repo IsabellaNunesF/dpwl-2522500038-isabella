@@ -1,153 +1,397 @@
 <?php
 
-// P5: CRUD Mobil
-class Mobil_controller extends Controller
+// P8: Manajemen Data Penyewa (Admin) + profil penyewa
+require_once APPPATH . 'helpers/auth_helper.php';
+require_once APPPATH . 'helpers/flash_helper.php';
+require_once APPPATH . 'helpers/csrf_helper.php';
+require_once APPPATH . 'models/Mpenyewa_model.php';
+require_once APPPATH . 'models/Transaksi_model.php';
+
+class Mpenyewa_controller extends Controller
 {
-  private Mobil_model $model;
+  private Mpenyewa_model $penyewaModel;
+  private Transaksi_model $transaksiModel;
+
+  private const MAX_FILE_SIZE = 5242880; // 5 MB (sama dengan Kendaraan)
+
+  private const ALLOWED_MIME = [
+    'image/jpeg'  => 'jpg',
+    'image/pjpeg' => 'jpg', // JPEG versi lama / .jfif di sebagian sistem
+    'image/png'   => 'png',
+    'image/webp'  => 'webp'
+  ];
+
+  // jenis di URL => kolom di tabel
+  private const FOTO_FIELD = [
+    'ktp' => 'ft_ktp',
+    'sim' => 'ft_sim_a'
+  ];
 
   public function __construct()
   {
-    require_once APPPATH . 'models/Mobil_model.php';
-    require_once APPPATH . 'helpers/auth_helper.php';
-    require_once APPPATH . 'helpers/flash_helper.php';
-
-    $this->model = new Mobil_model();
+    $this->penyewaModel = new Mpenyewa_model();
+    $this->transaksiModel = new Transaksi_model();
   }
 
-  public function index(): void
-  {
-    // semua halaman/proses admin wajib terlindungi.
-    require_admin_login();
+  /* ================= HELPER PRIVAT ================= */
 
-    // tabel dan form berada pada satu View: mobil_view.php.
-    $this->view('admin/mobil_view', [
-      'username'      => $_SESSION['admin_username'],
-      'mobil'         => $this->model->getAll(),
-      'flash'         => get_flash_message(),
-      'mode'          => null,
-      'mobil_dipilih' => null,
-      'error'         => null,
-    ]);
-  }
-
-  private function hapusFotoBaru(array $filenames): void
+  private function wajibLoginPenyewa(): string
   {
-    $uploadDir = dirname(APPPATH) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'mobil' . DIRECTORY_SEPARATOR;
-    foreach ($filenames as $filename) {
-      if (
-        is_string($filename) &&
-        preg_match('/(ft_depan|ft_blkg|ft_interior)_\d{14}_[a-f0-9]{16}\.(jpg|png|webp)$/', $filename)
-      ) {
-        $path = $uploadDir . $filename;
-        if (is_file($path)) {
-          @unlink($path);
-        }
-      }
+    if (empty($_SESSION['penyewa_user_plg'])) {
+      header('Location: ' . site_url('auth/login-penyewa'));
+      exit;
     }
+
+    return $_SESSION['penyewa_user_plg'];
+  }
+
+  private function validasiCsrf(): void
+  {
+    // Jika total unggahan melebihi post_max_size, PHP mengosongkan
+    // $_POST dan $_FILES sehingga token CSRF ikut hilang.
+    if (
+      $_SERVER['REQUEST_METHOD'] === 'POST' &&
+      empty($_POST) &&
+      empty($_FILES) &&
+      (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0
+    ) {
+      http_response_code(413);
+      exit('Ukuran total unggahan melebihi batas server (post_max_size).');
+    }
+
+    csrf_validate();
   }
 
   private function uploadFoto(string $field): array
   {
-    if (!in_array($field, ['ft_depan', 'ft_blkg', 'ft_interior'], true)) {
-      return ['success' => false, 'filename' => null, 'error' => 'Field foto tidak valid.'];
+    if (!in_array($field, ['ft_ktp', 'ft_sim_a'], true)) {
+      return ['success' => false, 'filename' => null, 'message' => 'Field foto tidak valid.'];
     }
 
-    if (!isset($_FILES[$field]) || ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-      return ['success' => true, 'filename' => null, 'error' => null];
+    if (
+      !isset($_FILES[$field]) ||
+      ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE
+    ) {
+      return ['success' => true, 'filename' => null, 'message' => null];
     }
 
     $file = $_FILES[$field];
-    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-      return ['success' => false, 'filename' => null, 'error' => 'Unggah foto gagal. Periksa ukuran file dan konfigurasi PHP.'];
+    $label = $field === 'ft_ktp' ? 'Foto KTP' : 'Foto SIM A';
+
+    switch ($file['error']) {
+      case UPLOAD_ERR_OK:
+        break;
+      case UPLOAD_ERR_INI_SIZE:
+      case UPLOAD_ERR_FORM_SIZE:
+        return ['success' => false, 'filename' => null, 'message' => $label . ' melebihi batas ukuran file (maksimal 5 MB, dan tidak boleh melebihi upload_max_filesize di php.ini).'];
+      case UPLOAD_ERR_PARTIAL:
+        return ['success' => false, 'filename' => null, 'message' => $label . ' hanya terunggah sebagian. Silakan ulangi.'];
+      default:
+        return ['success' => false, 'filename' => null, 'message' => $label . ' gagal diunggah (kesalahan konfigurasi server).'];
     }
 
-    if (!isset($file['tmp_name'], $file['size']) || !is_uploaded_file($file['tmp_name']) || (int)$file['size'] < 1 || (int)$file['size'] > 5 * 1024 * 1024) {
-      return ['success' => false, 'filename' => null, 'error' => 'Foto harus berukuran lebih dari 0 byte dan maksimal 5 MB.'];
+    if (!is_uploaded_file($file['tmp_name'])) {
+      return ['success' => false, 'filename' => null, 'message' => $label . ' tidak valid.'];
+    }
+
+    if ((int) $file['size'] < 1 || (int) $file['size'] > self::MAX_FILE_SIZE) {
+      return ['success' => false, 'filename' => null, 'message' => $label . ' harus berukuran lebih dari 0 byte dan maksimal 5 MB.'];
     }
 
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime = $finfo->file($file['tmp_name']);
-    $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
 
-    if (!isset($allowed[$mime]) || @getimagesize($file['tmp_name']) === false) {
-      return ['success' => false, 'filename' => null, 'error' => 'Format foto harus JPEG, PNG, atau WEBP yang valid.'];
+    if (!isset(self::ALLOWED_MIME[$mime]) || @getimagesize($file['tmp_name']) === false) {
+      return ['success' => false, 'filename' => null, 'message' => $label . ' harus berupa gambar JPG, PNG, atau WEBP yang valid.'];
     }
 
-    $uploadDir = dirname(APPPATH) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'mobil' . DIRECTORY_SEPARATOR;
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
-      return ['success' => false, 'filename' => null, 'error' => 'Folder penyimpanan foto tidak dapat dibuat.'];
+    $folder = dirname(APPPATH) . '/uploads/penyewa/';
+
+    if (!is_dir($folder) && !mkdir($folder, 0755, true) && !is_dir($folder)) {
+      return ['success' => false, 'filename' => null, 'message' => 'Folder penyimpanan foto tidak dapat dibuat.'];
     }
 
-    if (!is_writable($uploadDir)) {
-      return ['success' => false, 'filename' => null, 'error' => 'Folder penyimpanan foto tidak dapat ditulis.'];
+    if (!is_writable($folder)) {
+      return ['success' => false, 'filename' => null, 'message' => 'Folder penyimpanan foto tidak dapat ditulis.'];
     }
 
-    try {
-      $filename = $field . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(8)) . '.' . $allowed[$mime];
-    } catch (Throwable $e) {
-      return ['success' => false, 'filename' => null, 'error' => 'Nama file foto gagal dibuat.'];
+    $filename = $field . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(8))
+      . '.' . self::ALLOWED_MIME[$mime];
+
+    if (!move_uploaded_file($file['tmp_name'], $folder . $filename)) {
+      return ['success' => false, 'filename' => null, 'message' => $label . ' gagal disimpan ke server.'];
     }
 
-    if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
-      return ['success' => false, 'filename' => null, 'error' => 'Foto gagal dipindahkan ke folder penyimpanan.'];
-    }
-
-    return ['success' => true, 'filename' => $filename, 'error' => null];
+    return ['success' => true, 'filename' => $filename, 'message' => null];
   }
 
-  private function validateMobilInput(array $data): ?string
+  private function hapusFoto(?string $filename): void
   {
-    if ($data['no_plat'] === '' || strlen($data['no_plat']) > 15 || preg_match('/[\x00-\x1F\x7F]/', $data['no_plat'])) {
-      return 'Nomor plat wajib diisi dan maksimal 15 karakter.';
+    if (!$filename) {
+      return;
     }
-    if ($data['nm_mobil'] === '' || mb_strlen($data['nm_mobil']) > 40) {
-      return 'Nama mobil wajib diisi dan maksimal 40 karakter.';
+
+    $filename = basename($filename);
+
+    if (!preg_match('/^[A-Za-z0-9_]{8,80}\.(jpg|png|webp)$/', $filename)) {
+      return;
     }
-    if (!is_int($data['nkursi']) || $data['nkursi'] < 1 || $data['nkursi'] > 25) {
-      return 'Jumlah kursi harus berupa bilangan bulat antara 1 dan 25.';
+
+    $path = dirname(APPPATH) . '/uploads/penyewa/' . $filename;
+
+    if (is_file($path)) {
+      @unlink($path);
     }
-    if (!is_int($data['nbagasi']) || $data['nbagasi'] < 0 || $data['nbagasi'] > 30) {
-      return 'Jumlah bagasi harus berupa bilangan bulat antara 0 dan 30.';
+  }
+
+  private function ambilInput(): array
+  {
+    return [
+      'nik'        => trim((string) ($_POST['nik'] ?? '')),
+      'nm_lngkp'   => trim((string) ($_POST['nm_lngkp'] ?? '')),
+      'no_hp'      => trim((string) ($_POST['no_hp'] ?? '')),
+      'almt_lngkp' => trim((string) ($_POST['almt_lngkp'] ?? '')),
+    ];
+  }
+
+  private function validasiData(array $data): ?string
+  {
+    if (!preg_match('/\A[0-9]{16}\z/', $data['nik'])) {
+      return 'NIK harus terdiri dari 16 digit angka.';
     }
-    if (!in_array($data['jns_mobil'], ['SUV', 'MPV', 'City Car'], true)) {
-      return 'Jenis mobil tidak valid.';
+
+    if ($data['nm_lngkp'] === '' || mb_strlen($data['nm_lngkp']) > 100) {
+      return 'Nama wajib diisi, maksimal 100 karakter.';
     }
-    if (!in_array($data['transmisi'], ['AT', 'MT'], true)) {
-      return 'Transmisi tidak valid.';
+
+    if (!preg_match('/\A[0-9+(). -]{8,15}\z/', $data['no_hp'])) {
+      return 'Nomor HP tidak valid (8-15 karakter: angka, +, (, ), titik, spasi, atau strip).';
     }
-    if (!is_int($data['thn_buat']) || $data['thn_buat'] < 1901 || $data['thn_buat'] > (int)date('Y')) {
-      return 'Tahun pembuatan harus antara 1901 dan tahun berjalan.';
+
+    if ($data['almt_lngkp'] === '' || mb_strlen($data['almt_lngkp']) > 300) {
+      return 'Alamat wajib diisi, maksimal 300 karakter.';
     }
-    if (!is_int($data['hrg_hari']) || $data['hrg_hari'] < 1 || $data['hrg_hari'] > 16777215) {
-      return 'Harga sewa harus berupa bilangan bulat positif yang sesuai batas kolom.';
-    }
-    if ($data['cttn_unit'] === '' || mb_strlen($data['cttn_unit']) > 500) {
-      return 'Catatan unit wajib diisi dan maksimal 500 karakter.';
-    }
-    if (!in_array($data['status_unit'], ['tersedia', 'disewa', 'tidaktersedia'], true)) {
-      return 'Status kendaraan tidak valid.';
-    }
+
     return null;
   }
 
-  private function renderMobil(string $mode, ?array $mobilDipilih = null, ?string $error = null): void
+  private function validasiPassword(string $sandi, string $konfirmasi): ?string
   {
-    $this->view('admin/mobil_view', [
-      'username'      => $_SESSION['admin_username'],
-      'mobil'         => $this->model->getAll(),
-      'flash'         => null,
-      'mode'          => $mode,
-      'mobil_dipilih' => $mobilDipilih,
-      'error'         => $error,
+    if (strlen($sandi) < 8) {
+      return 'Password minimal 8 karakter.';
+    }
+
+    if (strlen($sandi) > 72) {
+      return 'Password maksimal 72 karakter.';
+    }
+
+    if ($sandi !== $konfirmasi) {
+      return 'Konfirmasi password tidak sama.';
+    }
+
+    return null;
+  }
+
+  private function render(string $mode, array $data = [], ?string $error = null): void
+  {
+    $this->view('admin/Mpenyewa_view', [
+      'username'        => $_SESSION['admin_username'] ?? '',
+      'penyewa'         => $this->penyewaModel->getAll(),
+      'flash'           => null,
+      'mode'            => $mode,
+      'penyewa_dipilih' => $data ?: null,
+      'error'           => $error,
+      'csrf_token'      => csrf_token()
     ]);
   }
+
+  /* ================= FOTO (dilindungi) ================= */
+
+  // Foto KTP/SIM bersifat sensitif: tidak diakses langsung lewat URL folder,
+  // tetapi lewat method ini (hanya admin atau pemilik foto).
+  public function foto(string $jenis = '', string $userPlg = ''): void
+  {
+    if (!isset(self::FOTO_FIELD[$jenis])) {
+      http_response_code(404);
+      exit('Foto tidak ditemukan.');
+    }
+
+    $adminOk = is_admin_logged_in();
+    $pemilikOk = !empty($_SESSION['penyewa_user_plg'])
+      && hash_equals((string) $_SESSION['penyewa_user_plg'], $userPlg);
+
+    if (!$adminOk && !$pemilikOk) {
+      http_response_code(403);
+      exit('Akses ditolak.');
+    }
+
+    $row = $this->penyewaModel->findByUserPlg($userPlg);
+    $nama = $row[self::FOTO_FIELD[$jenis]] ?? null;
+
+    if (!$nama || !preg_match('/^[A-Za-z0-9_]{8,80}\.(jpg|png|webp)$/', $nama)) {
+      http_response_code(404);
+      exit('Foto belum diunggah.');
+    }
+
+    $path = dirname(APPPATH) . '/uploads/penyewa/' . $nama;
+
+    if (!is_file($path)) {
+      http_response_code(404);
+      exit('Berkas foto tidak ditemukan.');
+    }
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
+
+    if (!isset(self::ALLOWED_MIME[$mime])) {
+      http_response_code(415);
+      exit('Tipe berkas tidak didukung.');
+    }
+
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($path));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: private, max-age=0, must-revalidate');
+    readfile($path);
+    exit;
+  }
+
+  /* ================= PROFIL PENYEWA ================= */
+
+  public function profil(): void
+  {
+    $userPlg = $this->wajibLoginPenyewa();
+    $profil = $this->penyewaModel->findByUserPlg($userPlg);
+
+    if (!$profil) {
+      header('Location: ' . site_url('auth/login-penyewa'));
+      exit;
+    }
+
+    $error = null;
+    $old = [];
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+      $this->validasiCsrf();
+
+      $old = $this->ambilInput();
+      $error = $this->validasiData($old);
+
+      $passwordLama = (string) ($_POST['password_lama'] ?? '');
+      $passwordBaru = (string) ($_POST['password_baru'] ?? '');
+      $konfirmasi = (string) ($_POST['konfirmasi_password'] ?? '');
+
+      $ubahPassword = ($passwordLama !== '' || $passwordBaru !== '' || $konfirmasi !== '');
+
+      if (!$error && $ubahPassword) {
+        if ($passwordLama === '' || $passwordBaru === '' || $konfirmasi === '') {
+          $error = 'Semua kolom password harus diisi.';
+        } elseif (!password_verify($passwordLama, $profil['sandi'])) {
+          $error = 'Password lama tidak sesuai.';
+        } else {
+          $error = $this->validasiPassword($passwordBaru, $konfirmasi);
+        }
+      }
+
+      $ktpBaru = null;
+      $simBaru = null;
+
+      if (!$error) {
+        $ktp = $this->uploadFoto('ft_ktp');
+        if (!$ktp['success']) {
+          $error = $ktp['message'];
+        } else {
+          $ktpBaru = $ktp['filename'];
+        }
+      }
+
+      if (!$error) {
+        $sim = $this->uploadFoto('ft_sim_a');
+        if (!$sim['success']) {
+          $error = $sim['message'];
+        } else {
+          $simBaru = $sim['filename'];
+        }
+      }
+
+      if (!$error) {
+        $data = $old;
+        $data['ft_ktp'] = $ktpBaru ?? $profil['ft_ktp'];
+        $data['ft_sim_a'] = $simBaru ?? $profil['ft_sim_a'];
+
+        $hash = $ubahPassword ? password_hash($passwordBaru, PASSWORD_DEFAULT) : null;
+
+        try {
+          $berhasil = $this->penyewaModel->update($userPlg, $data, $hash);
+        } catch (Throwable $e) {
+          error_log('Update profil gagal: ' . $e->getMessage());
+          $berhasil = false;
+        }
+
+        if ($berhasil) {
+          if ($ktpBaru) {
+            $this->hapusFoto($profil['ft_ktp']);
+          }
+          if ($simBaru) {
+            $this->hapusFoto($profil['ft_sim_a']);
+          }
+
+          $_SESSION['flash_profil'] = 'Profil berhasil diperbarui.';
+          header('Location: ' . site_url('penyewa/profil'));
+          exit;
+        }
+
+        $error = 'Profil gagal diperbarui.';
+      }
+
+      // Ada kegagalan: foto baru yang sempat tersimpan dibersihkan
+      $this->hapusFoto($ktpBaru);
+      $this->hapusFoto($simBaru);
+    }
+
+    $profil = $this->penyewaModel->findByUserPlg($userPlg);
+
+    $jumlahKeranjang = $this->transaksiModel->getJumlahMobilKeranjang($userPlg);
+
+    $flash = $_SESSION['flash_profil'] ?? null;
+    unset($_SESSION['flash_profil']);
+
+    unset($profil['sandi']);
+
+    $this->view('penyewa/profil', [
+      'profil'          => $profil,
+      'old'             => $old,
+      'error'           => $error,
+      'flash'           => $flash,
+      'csrf_token'      => csrf_token(),
+      'jumlahKeranjang' => $jumlahKeranjang
+    ]);
+  }
+
+  /* ================= ADMIN: READ ================= */
+
+  public function index(): void
+  {
+    require_admin_login();
+
+    $this->view('admin/Mpenyewa_view', [
+      'username'        => $_SESSION['admin_username'],
+      'penyewa'         => $this->penyewaModel->getAll(),
+      'flash'           => get_flash_message(),
+      'mode'            => null,
+      'penyewa_dipilih' => null,
+      'error'           => null,
+      'csrf_token'      => csrf_token()
+    ]);
+  }
+
+  /* ================= ADMIN: CREATE ================= */
 
   public function tambah(): void
   {
     require_admin_login();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-      $this->renderMobil('tambah');
+      $this->render('tambah');
       return;
     }
 
@@ -156,80 +400,98 @@ class Mobil_controller extends Controller
       exit('Metode request tidak diizinkan.');
     }
 
-    $data = [
-      'no_plat'     => trim((string)($_POST['no_plat'] ?? '')),
-      'nm_mobil'    => trim((string)($_POST['nm_mobil'] ?? '')),
-      'nkursi'      => filter_var($_POST['nkursi'] ?? null, FILTER_VALIDATE_INT),
-      'nbagasi'     => filter_var($_POST['nbagasi'] ?? null, FILTER_VALIDATE_INT),
-      'jns_mobil'   => (string)($_POST['jns_mobil'] ?? ''),
-      'transmisi'   => (string)($_POST['transmisi'] ?? ''),
-      'thn_buat'    => filter_var($_POST['thn_buat'] ?? null, FILTER_VALIDATE_INT),
-      'ft_depan'    => null,
-      'ft_blkg'     => null,
-      'ft_interior' => null,
-      'hrg_hari'    => filter_var($_POST['hrg_hari'] ?? null, FILTER_VALIDATE_INT),
-      'cttn_unit'   => trim((string)($_POST['cttn_unit'] ?? '')),
-      'status_unit' => (string)($_POST['status_unit'] ?? ''),
-    ];
+    $this->validasiCsrf();
 
-    $error = $this->validateMobilInput($data);
+    $data = $this->ambilInput();
+    $data['user_plg'] = trim((string) ($_POST['user_plg'] ?? ''));
+    $data['ft_ktp'] = null;
+    $data['ft_sim_a'] = null;
+
+    $sandi = (string) ($_POST['sandi'] ?? '');
+    $konfirmasi = (string) ($_POST['konfirmasi_sandi'] ?? '');
+
+    $error = null;
+
+    if (!preg_match('/\A[A-Za-z0-9._-]{3,15}\z/', $data['user_plg'])) {
+      $error = 'Username harus 3-15 karakter: huruf, angka, titik, garis bawah, atau tanda hubung.';
+    }
+
+    $error = $error ?? $this->validasiPassword($sandi, $konfirmasi);
+    $error = $error ?? $this->validasiData($data);
+
+    if ($error === null) {
+      try {
+        if ($this->penyewaModel->findByUserPlg($data['user_plg']) !== null) {
+          $error = 'Username sudah digunakan.';
+        }
+      } catch (Throwable $e) {
+        $error = 'Pemeriksaan username gagal. Coba lagi.';
+      }
+    }
+
     if ($error !== null) {
-      $this->renderMobil('tambah', $data, $error);
+      $this->render('tambah', $data, $error);
       return;
     }
 
-    $uploadedFiles = [];
-    foreach (['ft_depan', 'ft_blkg', 'ft_interior'] as $field) {
-      $upload = $this->uploadFoto($field);
-      if (!$upload['success']) {
-        $this->hapusFotoBaru($uploadedFiles);
-        $data['ft_depan'] = null;
-        $data['ft_blkg'] = null;
-        $data['ft_interior'] = null;
-        $this->renderMobil('tambah', $data, $upload['error']);
-        return;
-      }
-      $data[$field] = $upload['filename'];
-      if ($upload['filename'] !== null) {
-        $uploadedFiles[] = $upload['filename'];
-      }
+    $ktp = $this->uploadFoto('ft_ktp');
+    if (!$ktp['success']) {
+      $this->render('tambah', $data, $ktp['message']);
+      return;
     }
+
+    $sim = $this->uploadFoto('ft_sim_a');
+    if (!$sim['success']) {
+      $this->hapusFoto($ktp['filename']);
+      $this->render('tambah', $data, $sim['message']);
+      return;
+    }
+
+    $data['ft_ktp'] = $ktp['filename'];
+    $data['ft_sim_a'] = $sim['filename'];
+    $data['sandi'] = password_hash($sandi, PASSWORD_DEFAULT);
 
     try {
-      $success = $this->model->create($data);
+      $berhasil = $this->penyewaModel->create($data);
     } catch (Throwable $e) {
-      $success = false;
+      error_log('Tambah penyewa gagal: ' . $e->getMessage());
+      $berhasil = false;
     }
 
-    if (!$success) {
-      $this->hapusFotoBaru($uploadedFiles);
-      $data['ft_depan'] = null;
-      $data['ft_blkg'] = null;
-      $data['ft_interior'] = null;
-      $this->renderMobil('tambah', $data, 'Data kendaraan gagal disimpan. Periksa nomor plat dan data yang dimasukkan.');
+    if (!$berhasil) {
+      $this->hapusFoto($data['ft_ktp']);
+      $this->hapusFoto($data['ft_sim_a']);
+      $data['ft_ktp'] = null;
+      $data['ft_sim_a'] = null;
+      $this->render('tambah', $data, 'Data penyewa gagal disimpan. Periksa kembali data yang dimasukkan.');
       return;
     }
 
-    set_flash_message('success', 'Data kendaraan berhasil ditambahkan.');
-    header('Location: ' . site_url('admin/mobil'));
+    // PRG: redirect setelah POST berhasil
+    set_flash_message('success', 'Data penyewa berhasil ditambahkan.');
+    header('Location: ' . site_url('admin/mpenyewa'));
     exit;
   }
 
-  public function ubah(string $noPlat): void
+  /* ================= ADMIN: UPDATE ================= */
+
+  public function ubah(string $userPlg = ''): void
   {
     require_admin_login();
 
-    $noPlat = rawurldecode($noPlat);
-    $mobilLama = $this->model->findByNoPlat($noPlat);
+    $userPlg = rawurldecode($userPlg);
+    $lama = $this->penyewaModel->findByUserPlg($userPlg);
 
-    if ($mobilLama === null) {
-      set_flash_message('danger', 'Data kendaraan tidak ditemukan.');
-      header('Location: ' . site_url('admin/mobil'));
+    if ($lama === null) {
+      set_flash_message('danger', 'Data penyewa tidak ditemukan.');
+      header('Location: ' . site_url('admin/mpenyewa'));
       exit;
     }
+
+    unset($lama['sandi']); // hash tidak perlu dikirim ke View
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-      $this->renderMobil('ubah', $mobilLama);
+      $this->render('ubah', $lama);
       return;
     }
 
@@ -238,67 +500,75 @@ class Mobil_controller extends Controller
       exit('Metode request tidak diizinkan.');
     }
 
-    $data = [
-      'no_plat'     => $noPlat,
-      'nm_mobil'    => trim((string)($_POST['nm_mobil'] ?? '')),
-      'nkursi'      => filter_var($_POST['nkursi'] ?? null, FILTER_VALIDATE_INT),
-      'nbagasi'     => filter_var($_POST['nbagasi'] ?? null, FILTER_VALIDATE_INT),
-      'jns_mobil'   => (string)($_POST['jns_mobil'] ?? ''),
-      'transmisi'   => (string)($_POST['transmisi'] ?? ''),
-      'thn_buat'    => filter_var($_POST['thn_buat'] ?? null, FILTER_VALIDATE_INT),
-      'ft_depan'    => $mobilLama['ft_depan'],
-      'ft_blkg'     => $mobilLama['ft_blkg'],
-      'ft_interior' => $mobilLama['ft_interior'],
-      'hrg_hari'    => filter_var($_POST['hrg_hari'] ?? null, FILTER_VALIDATE_INT),
-      'cttn_unit'   => trim((string)($_POST['cttn_unit'] ?? '')),
-      'status_unit' => (string)($_POST['status_unit'] ?? ''),
-    ];
+    $this->validasiCsrf();
 
-    $error = $this->validateMobilInput($data);
+    $data = $this->ambilInput();
+    $data['ft_ktp'] = $lama['ft_ktp'];
+    $data['ft_sim_a'] = $lama['ft_sim_a'];
+
+    $sandi = (string) ($_POST['sandi'] ?? '');
+    $konfirmasi = (string) ($_POST['konfirmasi_sandi'] ?? '');
+    $ubahPassword = ($sandi !== '' || $konfirmasi !== '');
+
+    $error = $this->validasiData($data);
+
+    if ($error === null && $ubahPassword) {
+      $error = $this->validasiPassword($sandi, $konfirmasi);
+    }
+
     if ($error !== null) {
-      $this->renderMobil('ubah', array_merge($mobilLama, $data), $error);
+      $this->render('ubah', array_merge($lama, $data), $error);
       return;
     }
 
-    $uploadedFiles = [];
-    $fotoLamaUntukDihapus = [];
-
-    foreach (['ft_depan', 'ft_blkg', 'ft_interior'] as $field) {
-      $upload = $this->uploadFoto($field);
-      if (!$upload['success']) {
-        $this->hapusFotoBaru($uploadedFiles);
-        $this->renderMobil('ubah', array_merge($mobilLama, $data), $upload['error']);
-        return;
-      }
-
-      if ($upload['filename'] !== null) {
-        $uploadedFiles[] = $upload['filename'];
-        if (!empty($mobilLama[$field])) {
-          $fotoLamaUntukDihapus[] = $mobilLama[$field];
-        }
-        $data[$field] = $upload['filename'];
-      }
+    $ktp = $this->uploadFoto('ft_ktp');
+    if (!$ktp['success']) {
+      $this->render('ubah', array_merge($lama, $data), $ktp['message']);
+      return;
     }
+
+    $sim = $this->uploadFoto('ft_sim_a');
+    if (!$sim['success']) {
+      $this->hapusFoto($ktp['filename']);
+      $this->render('ubah', array_merge($lama, $data), $sim['message']);
+      return;
+    }
+
+    $data['ft_ktp'] = $ktp['filename'] ?? $lama['ft_ktp'];
+    $data['ft_sim_a'] = $sim['filename'] ?? $lama['ft_sim_a'];
+
+    $hash = $ubahPassword ? password_hash($sandi, PASSWORD_DEFAULT) : null;
 
     try {
-      $success = $this->model->update($noPlat, $data);
+      $berhasil = $this->penyewaModel->update($userPlg, $data, $hash);
     } catch (Throwable $e) {
-      $success = false;
+      error_log('Ubah penyewa gagal: ' . $e->getMessage());
+      $berhasil = false;
     }
 
-    if (!$success) {
-      $this->hapusFotoBaru($uploadedFiles);
-      $this->renderMobil('ubah', array_merge($mobilLama, $data), 'Data kendaraan gagal diperbarui. Periksa kembali data yang dimasukkan.');
+    if (!$berhasil) {
+      $this->hapusFoto($ktp['filename']);
+      $this->hapusFoto($sim['filename']);
+      $this->render('ubah', $lama, 'Data penyewa gagal diperbarui. Periksa kembali data yang dimasukkan.');
       return;
     }
 
-    $this->hapusFotoBaru($fotoLamaUntukDihapus);
-    set_flash_message('success', 'Data kendaraan berhasil diperbarui.');
-    header('Location: ' . site_url('admin/mobil'));
+    // Foto lama baru dihapus setelah database berhasil diperbarui
+    if ($ktp['filename']) {
+      $this->hapusFoto($lama['ft_ktp']);
+    }
+    if ($sim['filename']) {
+      $this->hapusFoto($lama['ft_sim_a']);
+    }
+
+    set_flash_message('success', 'Data penyewa berhasil diperbarui.');
+    header('Location: ' . site_url('admin/mpenyewa'));
     exit;
   }
 
-  public function hapus(string $noPlat): void
+  /* ================= ADMIN: DELETE ================= */
+
+  public function hapus(string $userPlg = ''): void
   {
     require_admin_login();
 
@@ -307,37 +577,40 @@ class Mobil_controller extends Controller
       exit('Metode request tidak diizinkan.');
     }
 
-    $noPlat = rawurldecode($noPlat);
-    $mobilLama = $this->model->findByNoPlat($noPlat);
+    $this->validasiCsrf();
 
-    if ($mobilLama === null) {
-      set_flash_message('danger', 'Data kendaraan tidak ditemukan.');
-      header('Location: ' . site_url('admin/mobil'));
+    $userPlg = rawurldecode($userPlg);
+    $penyewa = $this->penyewaModel->findByUserPlg($userPlg);
+
+    if ($penyewa === null) {
+      set_flash_message('danger', 'Data penyewa tidak ditemukan.');
+      header('Location: ' . site_url('admin/mpenyewa'));
       exit;
     }
 
     try {
-      $success = $this->model->delete($noPlat);
+      $berhasil = $this->penyewaModel->delete($userPlg);
+      $pesanGagal = 'Data penyewa gagal dihapus.';
+    } catch (mysqli_sql_exception $e) {
+      $berhasil = false;
+      // 1451 = masih direferensikan tabel lain (mis. t_sewa)
+      $pesanGagal = ((int) $e->getCode() === 1451)
+        ? 'Penyewa tidak dapat dihapus karena masih memiliki data transaksi sewa.'
+        : 'Data penyewa gagal dihapus.';
     } catch (Throwable $e) {
-      $success = false;
+      $berhasil = false;
+      $pesanGagal = 'Data penyewa gagal dihapus.';
     }
 
-    if (!$success) {
-      set_flash_message('danger', 'Data kendaraan gagal dihapus.');
-      header('Location: ' . site_url('admin/mobil'));
-      exit;
+    if ($berhasil) {
+      $this->hapusFoto($penyewa['ft_ktp']);
+      $this->hapusFoto($penyewa['ft_sim_a']);
+      set_flash_message('success', 'Data penyewa berhasil dihapus.');
+    } else {
+      set_flash_message('danger', $pesanGagal);
     }
 
-    $fotoDihapus = array_filter([
-      $mobilLama['ft_depan'] ?? null,
-      $mobilLama['ft_blkg'] ?? null,
-      $mobilLama['ft_interior'] ?? null,
-    ]);
-
-    $this->hapusFotoBaru($fotoDihapus);
-
-    set_flash_message('success', 'Data kendaraan berhasil dihapus.');
-    header('Location: ' . site_url('admin/mobil'));
+    header('Location: ' . site_url('admin/mpenyewa'));
     exit;
   }
 }

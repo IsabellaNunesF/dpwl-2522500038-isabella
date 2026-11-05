@@ -11,7 +11,7 @@ class Mpenyewa_model
     $this->db = $db;
   }
 
-  //membaca seluruh data penyewa (READ)
+  // READ: seluruh data penyewa
   public function getAll(): array
   {
     $sql = "SELECT
@@ -36,7 +36,7 @@ class Mpenyewa_model
     return $rows;
   }
 
-  //menyimpan data penyewa (INSERT)
+  // CREATE: tambah penyewa
   public function create(array $data): bool
   {
     $sql = "INSERT INTO t_penyewa (
@@ -70,7 +70,7 @@ class Mpenyewa_model
     return $success;
   }
 
-  //(READ)
+  // READ: berdasarkan username penyewa
   public function findByUserPlg(string $userPlg): ?array
   {
     $sql = "SELECT
@@ -98,10 +98,34 @@ class Mpenyewa_model
     return $row ?: null;
   }
 
-  //  (UPDATE)
-  public function update(string $userPlg, array $data): bool
+  // UPDATE: data penyewa termasuk foto (password opsional, sudah berupa hash)
+  public function update(string $userPlg, array $data, ?string $sandiHash = null): bool
   {
-    $sql = "UPDATE t_penyewa SET
+    if ($sandiHash !== null) {
+      $sql = "UPDATE t_penyewa SET
+                    nik = ?,
+                    nm_lngkp = ?,
+                    no_hp = ?,
+                    almt_lngkp = ?,
+                    ft_ktp = ?,
+                    ft_sim_a = ?,
+                    sandi = ?
+                WHERE user_plg = ?";
+
+      $stmt = $this->db->prepare($sql);
+      $stmt->bind_param(
+        'ssssssss',
+        $data['nik'],
+        $data['nm_lngkp'],
+        $data['no_hp'],
+        $data['almt_lngkp'],
+        $data['ft_ktp'],
+        $data['ft_sim_a'],
+        $sandiHash,
+        $userPlg
+      );
+    } else {
+      $sql = "UPDATE t_penyewa SET
                     nik = ?,
                     nm_lngkp = ?,
                     no_hp = ?,
@@ -110,18 +134,18 @@ class Mpenyewa_model
                     ft_sim_a = ?
                 WHERE user_plg = ?";
 
-    $stmt = $this->db->prepare($sql);
-
-    $stmt->bind_param(
-      'sssssss',
-      $data['nik'],
-      $data['nm_lngkp'],
-      $data['no_hp'],
-      $data['almt_lngkp'],
-      $data['ft_ktp'],
-      $data['ft_sim_a'],
-      $userPlg
-    );
+      $stmt = $this->db->prepare($sql);
+      $stmt->bind_param(
+        'sssssss',
+        $data['nik'],
+        $data['nm_lngkp'],
+        $data['no_hp'],
+        $data['almt_lngkp'],
+        $data['ft_ktp'],
+        $data['ft_sim_a'],
+        $userPlg
+      );
+    }
 
     $success = $stmt->execute();
     $stmt->close();
@@ -129,7 +153,7 @@ class Mpenyewa_model
     return $success;
   }
 
-  // memperbarui password penyewa
+  // UPDATE: password penyewa
   public function updatePassword(string $userPlg, string $sandi): bool
   {
     $sql = "UPDATE t_penyewa
@@ -137,12 +161,7 @@ class Mpenyewa_model
                 WHERE user_plg = ?";
 
     $stmt = $this->db->prepare($sql);
-
-    $stmt->bind_param(
-      'ss',
-      $sandi,
-      $userPlg
-    );
+    $stmt->bind_param('ss', $sandi, $userPlg);
 
     $success = $stmt->execute();
     $stmt->close();
@@ -150,7 +169,7 @@ class Mpenyewa_model
     return $success;
   }
 
-  // (DELETE)
+  // DELETE: penyewa
   public function delete(string $userPlg): bool
   {
     $sql = "DELETE FROM t_penyewa
