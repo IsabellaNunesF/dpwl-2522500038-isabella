@@ -48,7 +48,14 @@
           <i class="fa fa-car"></i> <span>Manajemen Kendaraan</span>
         </a>
       </li>
+      <li>
+        <a href="<?= base_url('penyewa') ?>">
+          <i class="fa fa-users"></i>
+          <span>Manajemen Penyewa</span>
+        </a>
+      </li>
     </ul>
+
     <!-- /.sidebar-menu -->
   </section>
   <!-- /.sidebar -->
