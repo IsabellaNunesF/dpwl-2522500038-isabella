@@ -49,3 +49,7 @@ $route['admin/mpenyewa/ubah/(:any)'] = 'Mpenyewa_controller/ubah/$1';
 $route['admin/mpenyewa/hapus/(:any)'] = 'Mpenyewa_controller/hapus/$1';
 // Foto KTP/SIM dilayani lewat controller (hanya admin atau pemilik foto)
 $route['penyewa/foto/(:any)/(:any)'] = 'Mpenyewa_controller/foto/$1/$2';
+
+// Route P9 - Pembayaran Awal
+$route['transaksi/pembayaran'] = 'Transaksi_controller/pembayaran';
+$route['transaksi/upload-bukti'] = 'Transaksi_controller/uploadBukti';

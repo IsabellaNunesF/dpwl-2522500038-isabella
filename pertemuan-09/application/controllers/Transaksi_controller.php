@@ -2,6 +2,8 @@
 <?php
 
 require_once APPPATH . 'models/Transaksi_model.php';
+require_once APPPATH . 'helpers/auth_helper.php';
+require_once APPPATH . 'helpers/csrf_helper.php';
 
 class Transaksi_controller extends Controller
 {
@@ -390,5 +392,150 @@ class Transaksi_controller extends Controller
 
     header('Location: ' . site_url($uri));
     exit;
+  }
+
+  // Menampilkan riwayat pembayaran penyewa
+  public function pembayaran(): void
+  {
+    $userPlg = $this->wajibLoginPenyewa();
+    $this->wajibMetode('GET');
+
+    try {
+      $pembayaran = $this->transaksiModel
+        ->getPembayaranPenyewa($userPlg);
+
+      $this->view('transaksi/pembayaran', [
+        'pembayaran' => $pembayaran
+      ]);
+    } catch (Throwable $e) {
+      error_log('Riwayat pembayaran gagal: ' . $e->getMessage());
+
+      http_response_code(500);
+      exit('Riwayat pembayaran belum dapat ditampilkan.');
+    }
+  }
+
+  // Mengunggah bukti pembayaran DP
+  public function uploadBukti(): void
+  {
+    $userPlg = $this->wajibLoginPenyewa();
+    $this->wajibMetode('POST');
+    csrf_validate();
+
+    $kodeBayar = trim(
+      (string) ($_POST['kode_bayar'] ?? '')
+    );
+
+    if ($kodeBayar === '') {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Kode pembayaran tidak ditemukan.'
+      );
+    }
+
+    if (
+      !isset($_FILES['ft_byr']) ||
+      $_FILES['ft_byr']['error'] !== UPLOAD_ERR_OK
+    ) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Bukti pembayaran wajib dipilih dan diunggah dengan benar.'
+      );
+    }
+
+    $file = $_FILES['ft_byr'];
+
+    // Batas ukuran file 5 MB
+    if ($file['size'] <= 0 || $file['size'] > 5 * 1024 * 1024) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Ukuran bukti pembayaran maksimal 5 MB.'
+      );
+    }
+
+    // Memeriksa MIME berdasarkan isi file
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($file['tmp_name']);
+
+    $tipeDiizinkan = [
+      'image/jpeg' => 'jpg',
+      'image/png' => 'png',
+      'image/webp' => 'webp'
+    ];
+
+    if (!isset($tipeDiizinkan[$mime])) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Format bukti pembayaran harus JPG, PNG, atau WEBP.'
+      );
+    }
+
+    // Menyiapkan folder penyimpanan bukti
+    $folder = FCPATH . 'assets/uploads/bukti-pembayaran/';
+
+    if (
+      !is_dir($folder) &&
+      !mkdir($folder, 0755, true) &&
+      !is_dir($folder)
+    ) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Folder penyimpanan bukti pembayaran belum tersedia.'
+      );
+    }
+
+    // Nama file dibuat acak agar tidak bentrok
+    $namaFile = bin2hex(random_bytes(16))
+      . '.' . $tipeDiizinkan[$mime];
+
+    $tujuan = $folder . $namaFile;
+
+    if (!move_uploaded_file($file['tmp_name'], $tujuan)) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Bukti pembayaran gagal disimpan.'
+      );
+    }
+
+    try {
+      $berhasil = $this->transaksiModel
+        ->simpanBuktiPembayaran(
+          $kodeBayar,
+          $userPlg,
+          $namaFile
+        );
+
+      if (!$berhasil) {
+        @unlink($tujuan);
+
+        $this->redirectDenganPesan(
+          'transaksi/pembayaran',
+          'error',
+          'Pembayaran tidak ditemukan, bukan milik Anda, atau sudah diproses.'
+        );
+      }
+
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'success',
+        'Bukti pembayaran berhasil diunggah.'
+      );
+    } catch (Throwable $e) {
+      @unlink($tujuan);
+
+      error_log('Upload bukti pembayaran gagal: ' . $e->getMessage());
+
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Bukti pembayaran belum berhasil disimpan.'
+      );
+    }
   }
 }

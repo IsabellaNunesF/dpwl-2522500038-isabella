@@ -974,4 +974,329 @@ AND status_sewa = 'keranjang'"
 
     return $row ? (string) $row['kode_sewa'] : null;
   }
+
+  // Mengambil riwayat pembayaran milik penyewa
+  public function getPembayaranPenyewa(string $userPlg): array
+  {
+    $stmt = $this->db->prepare(
+      "SELECT
+        b.kode_bayar,
+        b.tgl_wkt_byr,
+        b.ft_byr,
+        b.mtode_byr,
+        b.jns_byr,
+        b.nominal,
+        b.sttus_byr,
+        b.tgl_wkt_ver,
+        s.kode_sewa,
+        s.tgl_mulai,
+        s.tgl_selesai,
+        s.status_sewa
+      FROM t_bayar b
+      INNER JOIN t_sewa s ON s.kode_sewa = b.kode_sewa
+      WHERE s.user_plg = ?
+      ORDER BY b.tgl_wkt_byr DESC"
+    );
+
+    if (!$stmt) {
+      throw new RuntimeException(
+        'Pengambilan riwayat pembayaran gagal disiapkan.'
+      );
+    }
+
+    $stmt->bind_param('s', $userPlg);
+
+    if (!$stmt->execute()) {
+      $stmt->close();
+      throw new RuntimeException(
+        'Pengambilan riwayat pembayaran gagal dijalankan.'
+      );
+    }
+
+    $hasil = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return $hasil;
+  }
+
+  // Mengambil daftar pembayaran DP yang menunggu verifikasi admin
+  public function getDaftarPembayaranAdmin(): array
+  {
+    $stmt = $this->db->prepare(
+      "SELECT
+        b.kode_bayar,
+        b.tgl_wkt_byr,
+        b.ft_byr,
+        b.nominal,
+        b.sttus_byr,
+        b.kode_sewa,
+        p.user_plg,
+        p.nm_lngkp,
+        s.tgl_mulai,
+        s.tgl_selesai
+      FROM t_bayar b
+      INNER JOIN t_sewa s ON s.kode_sewa = b.kode_sewa
+      INNER JOIN t_penyewa p ON p.user_plg = s.user_plg
+      WHERE b.jns_byr = 'dp'
+        AND b.mtode_byr = 'transfer'
+        AND b.sttus_byr = 'pending'
+        AND b.ft_byr IS NOT NULL
+        AND b.ft_byr <> ''
+      ORDER BY b.tgl_wkt_byr ASC"
+    );
+
+    if (!$stmt) {
+      throw new RuntimeException(
+        'Daftar pembayaran admin gagal disiapkan.'
+      );
+    }
+
+    if (!$stmt->execute()) {
+      $stmt->close();
+      throw new RuntimeException(
+        'Daftar pembayaran admin gagal dijalankan.'
+      );
+    }
+
+    $hasil = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return $hasil;
+  }
+
+  // Menyimpan nama file bukti pembayaran milik penyewa
+  public function simpanBuktiPembayaran(
+    string $kodeBayar,
+    string $userPlg,
+    string $namaFile
+  ): bool {
+    $stmt = $this->db->prepare(
+      "UPDATE t_bayar b
+      INNER JOIN t_sewa s ON s.kode_sewa = b.kode_sewa
+      SET b.ft_byr = ?
+      WHERE b.kode_bayar = ?
+        AND s.user_plg = ?
+        AND b.jns_byr = 'dp'
+        AND b.mtode_byr = 'transfer'
+        AND b.sttus_byr = 'pending'"
+    );
+
+    if (!$stmt) {
+      throw new RuntimeException(
+        'Penyimpanan bukti pembayaran gagal disiapkan.'
+      );
+    }
+
+    $stmt->bind_param(
+      'sss',
+      $namaFile,
+      $kodeBayar,
+      $userPlg
+    );
+
+    if (!$stmt->execute()) {
+      $stmt->close();
+      throw new RuntimeException(
+        'Penyimpanan bukti pembayaran gagal dijalankan.'
+      );
+    }
+
+    $berhasil = $stmt->affected_rows === 1;
+    $stmt->close();
+
+    return $berhasil;
+  }
+
+  // Memverifikasi pembayaran DP oleh admin
+  public function verifikasiPembayaran(
+    string $kodeBayar,
+    string $status
+  ): bool {
+    if (!in_array($status, ['valid', 'invalid'], true)) {
+      throw new InvalidArgumentException(
+        'Status verifikasi pembayaran tidak valid.'
+      );
+    }
+
+    $stmt = $this->db->prepare(
+      "UPDATE t_bayar
+      SET sttus_byr = ?,
+          tgl_wkt_ver = NOW()
+      WHERE kode_bayar = ?
+        AND jns_byr = 'dp'
+        AND mtode_byr = 'transfer'
+        AND sttus_byr = 'pending'
+        AND ft_byr IS NOT NULL
+        AND ft_byr <> ''"
+    );
+
+    if (!$stmt) {
+      throw new RuntimeException(
+        'Verifikasi pembayaran gagal disiapkan.'
+      );
+    }
+
+    $stmt->bind_param(
+      'ss',
+      $status,
+      $kodeBayar
+    );
+
+    if (!$stmt->execute()) {
+      $stmt->close();
+      throw new RuntimeException(
+        'Verifikasi pembayaran gagal dijalankan.'
+      );
+    }
+
+    $berhasil = $stmt->affected_rows === 1;
+    $stmt->close();
+
+    return $berhasil;
+  }
+
+  // Menampilkan riwayat pembayaran penyewa
+  public function pembayaran(): void
+  {
+    $userPlg = $this->wajibLoginPenyewa();
+    $this->wajibMetode('GET');
+
+    try {
+      $pembayaran = $this->transaksiModel
+        ->getPembayaranPenyewa($userPlg);
+
+      $this->view('transaksi/pembayaran', [
+        'pembayaran' => $pembayaran
+      ]);
+    } catch (Throwable $e) {
+      error_log('Riwayat pembayaran gagal: ' . $e->getMessage());
+
+      http_response_code(500);
+      exit('Riwayat pembayaran belum dapat ditampilkan.');
+    }
+  }
+
+  // Mengunggah bukti pembayaran DP
+  public function uploadBukti(): void
+  {
+    $userPlg = $this->wajibLoginPenyewa();
+    $this->wajibMetode('POST');
+    csrf_validate();
+
+    $kodeBayar = trim(
+      (string) ($_POST['kode_bayar'] ?? '')
+    );
+
+    if ($kodeBayar === '') {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Kode pembayaran tidak ditemukan.'
+      );
+    }
+
+    if (
+      !isset($_FILES['ft_byr']) ||
+      $_FILES['ft_byr']['error'] !== UPLOAD_ERR_OK
+    ) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Bukti pembayaran wajib dipilih dan diunggah dengan benar.'
+      );
+    }
+
+    $file = $_FILES['ft_byr'];
+
+    // Batas ukuran file 5 MB
+    if ($file['size'] <= 0 || $file['size'] > 5 * 1024 * 1024) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Ukuran bukti pembayaran maksimal 5 MB.'
+      );
+    }
+
+    // Memeriksa MIME berdasarkan isi file
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($file['tmp_name']);
+
+    $tipeDiizinkan = [
+      'image/jpeg' => 'jpg',
+      'image/png' => 'png',
+      'image/webp' => 'webp'
+    ];
+
+    if (!isset($tipeDiizinkan[$mime])) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Format bukti pembayaran harus JPG, PNG, atau WEBP.'
+      );
+    }
+
+    // Menyiapkan folder penyimpanan bukti
+    $folder = FCPATH . 'assets/uploads/bukti-pembayaran/';
+
+    if (
+      !is_dir($folder) &&
+      !mkdir($folder, 0755, true) &&
+      !is_dir($folder)
+    ) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Folder penyimpanan bukti pembayaran belum tersedia.'
+      );
+    }
+
+    // Nama file dibuat acak agar tidak bentrok
+    $namaFile = bin2hex(random_bytes(16))
+      . '.' . $tipeDiizinkan[$mime];
+
+    $tujuan = $folder . $namaFile;
+
+    if (!move_uploaded_file($file['tmp_name'], $tujuan)) {
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Bukti pembayaran gagal disimpan.'
+      );
+    }
+
+    try {
+      $berhasil = $this->transaksiModel
+        ->simpanBuktiPembayaran(
+          $kodeBayar,
+          $userPlg,
+          $namaFile
+        );
+
+      if (!$berhasil) {
+        @unlink($tujuan);
+
+        $this->redirectDenganPesan(
+          'transaksi/pembayaran',
+          'error',
+          'Pembayaran tidak ditemukan, bukan milik Anda, atau sudah diproses.'
+        );
+      }
+
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'success',
+        'Bukti pembayaran berhasil diunggah.'
+      );
+    } catch (Throwable $e) {
+      @unlink($tujuan);
+
+      error_log('Upload bukti pembayaran gagal: ' . $e->getMessage());
+
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran',
+        'error',
+        'Bukti pembayaran belum berhasil disimpan.'
+      );
+    }
+  }
 }
