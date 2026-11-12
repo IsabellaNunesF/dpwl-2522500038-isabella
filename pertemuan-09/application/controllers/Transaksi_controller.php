@@ -364,11 +364,12 @@ class Transaksi_controller extends Controller
         );
       }
 
-      $_SESSION['flash_penyewa_nav'] =
-        'Checkout berhasil. Transaksi diajukan dan menunggu persetujuan admin.';
-
-      header('Location: ' . site_url('katalog'));
-      exit;
+      // P9: setelah checkout, penyewa langsung diarahkan untuk membayar DP.
+      $this->redirectDenganPesan(
+        'transaksi/pembayaran?kode_sewa=' . rawurlencode($kodeSewa),
+        'success',
+        'Transaksi berhasil diajukan. Silakan transfer DP dan unggah bukti pembayaran.'
+      );
     } catch (Throwable $e) {
       error_log('Checkout transaksi gagal: ' . $e->getMessage());
 
@@ -393,149 +394,272 @@ class Transaksi_controller extends Controller
     header('Location: ' . site_url($uri));
     exit;
   }
+  /* ================= P9: PEMBAYARAN AWAL (DP) ================= */
 
-  // Menampilkan riwayat pembayaran penyewa
-  public function pembayaran(): void
+  private const BUKTI_MAX = 5242880; // 5 MB
+
+  private const BUKTI_MIME = [
+    'image/jpeg' => 'jpg',
+    'image/png'  => 'png',
+    'image/webp' => 'webp'
+  ];
+
+  // Daftar transaksi milik penyewa.
+  public function saya(): void
   {
     $userPlg = $this->wajibLoginPenyewa();
     $this->wajibMetode('GET');
 
     try {
-      $pembayaran = $this->transaksiModel
-        ->getPembayaranPenyewa($userPlg);
+      $daftar = $this->transaksiModel->getTransaksiPenyewa($userPlg);
+      $flash = $_SESSION['flash_transaksi'] ?? null;
+      unset($_SESSION['flash_transaksi']);
 
-      $this->view('transaksi/pembayaran', [
-        'pembayaran' => $pembayaran
+      $this->view('transaksi/saya', [
+        'daftar' => $daftar,
+        'flash' => $flash,
+        'jumlahKeranjang' =>
+        $this->transaksiModel->getJumlahMobilKeranjang($userPlg)
       ]);
     } catch (Throwable $e) {
-      error_log('Riwayat pembayaran gagal: ' . $e->getMessage());
-
+      error_log('Daftar transaksi gagal: ' . $e->getMessage());
       http_response_code(500);
-      exit('Riwayat pembayaran belum dapat ditampilkan.');
+      exit('Daftar transaksi belum dapat ditampilkan.');
     }
   }
 
-  // Mengunggah bukti pembayaran DP
-  public function uploadBukti(): void
+  // Halaman pembayaran DP: ringkasan + status + form unggah bukti.
+  public function pembayaran(): void
   {
     $userPlg = $this->wajibLoginPenyewa();
-    $this->wajibMetode('POST');
-    csrf_validate();
+    $this->wajibMetode('GET');
 
-    $kodeBayar = trim(
-      (string) ($_POST['kode_bayar'] ?? '')
-    );
-
-    if ($kodeBayar === '') {
+    $kodeSewa = trim((string) ($_GET['kode_sewa'] ?? ''));
+    if ($kodeSewa === '') {
       $this->redirectDenganPesan(
-        'transaksi/pembayaran',
+        'transaksi/saya',
         'error',
-        'Kode pembayaran tidak ditemukan.'
-      );
-    }
-
-    if (
-      !isset($_FILES['ft_byr']) ||
-      $_FILES['ft_byr']['error'] !== UPLOAD_ERR_OK
-    ) {
-      $this->redirectDenganPesan(
-        'transaksi/pembayaran',
-        'error',
-        'Bukti pembayaran wajib dipilih dan diunggah dengan benar.'
-      );
-    }
-
-    $file = $_FILES['ft_byr'];
-
-    // Batas ukuran file 5 MB
-    if ($file['size'] <= 0 || $file['size'] > 5 * 1024 * 1024) {
-      $this->redirectDenganPesan(
-        'transaksi/pembayaran',
-        'error',
-        'Ukuran bukti pembayaran maksimal 5 MB.'
-      );
-    }
-
-    // Memeriksa MIME berdasarkan isi file
-    $finfo = new finfo(FILEINFO_MIME_TYPE);
-    $mime = $finfo->file($file['tmp_name']);
-
-    $tipeDiizinkan = [
-      'image/jpeg' => 'jpg',
-      'image/png' => 'png',
-      'image/webp' => 'webp'
-    ];
-
-    if (!isset($tipeDiizinkan[$mime])) {
-      $this->redirectDenganPesan(
-        'transaksi/pembayaran',
-        'error',
-        'Format bukti pembayaran harus JPG, PNG, atau WEBP.'
-      );
-    }
-
-    // Menyiapkan folder penyimpanan bukti
-    $folder = FCPATH . 'assets/uploads/bukti-pembayaran/';
-
-    if (
-      !is_dir($folder) &&
-      !mkdir($folder, 0755, true) &&
-      !is_dir($folder)
-    ) {
-      $this->redirectDenganPesan(
-        'transaksi/pembayaran',
-        'error',
-        'Folder penyimpanan bukti pembayaran belum tersedia.'
-      );
-    }
-
-    // Nama file dibuat acak agar tidak bentrok
-    $namaFile = bin2hex(random_bytes(16))
-      . '.' . $tipeDiizinkan[$mime];
-
-    $tujuan = $folder . $namaFile;
-
-    if (!move_uploaded_file($file['tmp_name'], $tujuan)) {
-      $this->redirectDenganPesan(
-        'transaksi/pembayaran',
-        'error',
-        'Bukti pembayaran gagal disimpan.'
+        'Kode transaksi tidak ditemukan.'
       );
     }
 
     try {
-      $berhasil = $this->transaksiModel
-        ->simpanBuktiPembayaran(
-          $kodeBayar,
-          $userPlg,
-          $namaFile
-        );
+      $transaksi = $this->transaksiModel
+        ->getTransaksiDenganDp($kodeSewa, $userPlg);
 
-      if (!$berhasil) {
-        @unlink($tujuan);
-
-        $this->redirectDenganPesan(
-          'transaksi/pembayaran',
-          'error',
-          'Pembayaran tidak ditemukan, bukan milik Anda, atau sudah diproses.'
-        );
+      if ($transaksi === null) {
+        http_response_code(404);
+        exit('Transaksi tidak ditemukan atau bukan milik akun ini.');
       }
 
-      $this->redirectDenganPesan(
-        'transaksi/pembayaran',
-        'success',
-        'Bukti pembayaran berhasil diunggah.'
-      );
+      $flash = $_SESSION['flash_transaksi'] ?? null;
+      unset($_SESSION['flash_transaksi']);
+
+      $this->view('transaksi/pembayaran', [
+        'transaksi' => $transaksi,
+        'flash' => $flash,
+        'jumlahKeranjang' =>
+        $this->transaksiModel->getJumlahMobilKeranjang($userPlg)
+      ]);
     } catch (Throwable $e) {
-      @unlink($tujuan);
+      error_log('Halaman pembayaran gagal: ' . $e->getMessage());
+      http_response_code(500);
+      exit('Halaman pembayaran belum dapat ditampilkan.');
+    }
+  }
 
-      error_log('Upload bukti pembayaran gagal: ' . $e->getMessage());
+  // Proses unggah bukti transfer DP.
+  public function unggahBukti(): void
+  {
+    $userPlg = $this->wajibLoginPenyewa();
+    $this->wajibMetode('POST');
+
+    // Total unggahan melebihi post_max_size -> $_POST & $_FILES kosong.
+    if (
+      empty($_POST) && empty($_FILES)
+      && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0
+    ) {
+      http_response_code(413);
+      exit('Ukuran unggahan melebihi batas server (post_max_size).');
+    }
+    csrf_validate();
+
+    $kodeSewa = trim((string) ($_POST['kode_sewa'] ?? ''));
+    if ($kodeSewa === '') {
+      http_response_code(400);
+      exit('Kode transaksi wajib diisi.');
+    }
+
+    $uri = 'transaksi/pembayaran?kode_sewa=' . rawurlencode($kodeSewa);
+
+    $hasil = $this->simpanFileBukti();
+    if (!$hasil['success']) {
+      $this->redirectDenganPesan($uri, 'error', (string) $hasil['message']);
+    }
+
+    $namaBaru = (string) $hasil['filename'];
+
+    try {
+      $namaLama = $this->transaksiModel
+        ->simpanBuktiDp($kodeSewa, $userPlg, $namaBaru);
+
+      $this->hapusFileBukti($namaLama);
 
       $this->redirectDenganPesan(
-        'transaksi/pembayaran',
-        'error',
-        'Bukti pembayaran belum berhasil disimpan.'
+        $uri,
+        'success',
+        'Bukti pembayaran berhasil diunggah. Menunggu verifikasi admin.'
       );
+    } catch (InvalidArgumentException $e) {
+      $this->hapusFileBukti($namaBaru);
+      $this->redirectDenganPesan($uri, 'error', $e->getMessage());
+    } catch (Throwable $e) {
+      $this->hapusFileBukti($namaBaru);
+      error_log('Unggah bukti DP gagal: ' . $e->getMessage());
+      $this->redirectDenganPesan(
+        $uri,
+        'error',
+        'Bukti pembayaran belum berhasil disimpan. Silakan coba lagi.'
+      );
+    }
+  }
+
+  // Menyajikan foto bukti (dilindungi: hanya admin atau pemilik transaksi).
+  public function bukti(): void
+  {
+    $kodeBayar = trim((string) ($_GET['kode_bayar'] ?? ''));
+
+    $adminOk = is_admin_logged_in();
+    $userPlg = (string) ($_SESSION['penyewa_user_plg'] ?? '');
+
+    if (!$adminOk && $userPlg === '') {
+      http_response_code(403);
+      exit('Akses ditolak.');
+    }
+
+    try {
+      $row = $kodeBayar === ''
+        ? null
+        : $this->transaksiModel->getPembayaranUntukBukti($kodeBayar);
+    } catch (Throwable $e) {
+      error_log('Bukti pembayaran gagal dibaca: ' . $e->getMessage());
+      http_response_code(500);
+      exit('Bukti pembayaran belum dapat ditampilkan.');
+    }
+
+    if ($row === null) {
+      http_response_code(404);
+      exit('Pembayaran tidak ditemukan.');
+    }
+
+    if (!$adminOk && !hash_equals((string) $row['user_plg'], $userPlg)) {
+      http_response_code(403);
+      exit('Akses ditolak.');
+    }
+
+    $nama = (string) ($row['ft_byr'] ?? '');
+    if (!preg_match('/^[A-Za-z0-9_]{8,80}\.(jpg|png|webp)$/', $nama)) {
+      http_response_code(404);
+      exit('Bukti pembayaran belum diunggah.');
+    }
+
+    $path = $this->folderBukti() . $nama;
+    if (!is_file($path)) {
+      http_response_code(404);
+      exit('Berkas bukti tidak ditemukan.');
+    }
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
+    if (!isset(self::BUKTI_MIME[$mime])) {
+      http_response_code(415);
+      exit('Tipe berkas tidak didukung.');
+    }
+
+    while (ob_get_level() > 0) {
+      ob_end_clean();
+    }
+
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($path));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: private, max-age=0, must-revalidate');
+    readfile($path);
+    exit;
+  }
+
+  private function folderBukti(): string
+  {
+    return dirname(APPPATH) . '/uploads/bukti/';
+  }
+
+  private function simpanFileBukti(): array
+  {
+    $gagal = static fn(string $pesan): array =>
+    ['success' => false, 'filename' => null, 'message' => $pesan];
+
+    $file = $_FILES['ft_byr'] ?? null;
+
+    if ($file === null || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+      return $gagal('Pilih foto bukti transfer terlebih dahulu.');
+    }
+
+    switch ($file['error']) {
+      case UPLOAD_ERR_OK:
+        break;
+      case UPLOAD_ERR_INI_SIZE:
+      case UPLOAD_ERR_FORM_SIZE:
+        return $gagal('Bukti transfer melebihi batas ukuran file (maksimal 5 MB).');
+      case UPLOAD_ERR_PARTIAL:
+        return $gagal('Bukti transfer hanya terunggah sebagian. Silakan ulangi.');
+      default:
+        return $gagal('Bukti transfer gagal diunggah (kesalahan konfigurasi server).');
+    }
+
+    if (!is_uploaded_file($file['tmp_name'])) {
+      return $gagal('Berkas bukti transfer tidak valid.');
+    }
+
+    if ((int) $file['size'] < 1 || (int) $file['size'] > self::BUKTI_MAX) {
+      return $gagal('Bukti transfer harus berukuran lebih dari 0 byte dan maksimal 5 MB.');
+    }
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+    if (!isset(self::BUKTI_MIME[$mime]) || @getimagesize($file['tmp_name']) === false) {
+      return $gagal('Bukti transfer harus berupa gambar JPG, PNG, atau WEBP yang valid.');
+    }
+
+    $folder = $this->folderBukti();
+    if (!is_dir($folder) && !mkdir($folder, 0755, true) && !is_dir($folder)) {
+      return $gagal('Folder penyimpanan bukti tidak dapat dibuat.');
+    }
+    if (!is_writable($folder)) {
+      return $gagal('Folder penyimpanan bukti tidak dapat ditulis.');
+    }
+
+    $nama = 'ft_byr_' . date('YmdHis') . '_' . bin2hex(random_bytes(8))
+      . '.' . self::BUKTI_MIME[$mime];
+
+    if (!move_uploaded_file($file['tmp_name'], $folder . $nama)) {
+      return $gagal('Bukti transfer gagal disimpan ke server.');
+    }
+
+    return ['success' => true, 'filename' => $nama, 'message' => null];
+  }
+
+  private function hapusFileBukti(?string $nama): void
+  {
+    if (!$nama) {
+      return;
+    }
+
+    $nama = basename($nama);
+    if (!preg_match('/^[A-Za-z0-9_]{8,80}\.(jpg|png|webp)$/', $nama)) {
+      return;
+    }
+
+    $path = $this->folderBukti() . $nama;
+    if (is_file($path)) {
+      @unlink($path);
     }
   }
 }

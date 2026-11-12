@@ -15,3 +15,11 @@ RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]
   php_value upload_max_filesize 6M
   php_value post_max_size 14M
 </IfModule>
+# Bukti transfer bersifat privat: hanya dilayani lewat Transaksi_controller::bukti
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>
