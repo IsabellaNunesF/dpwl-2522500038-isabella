@@ -1249,4 +1249,21 @@ AND status_sewa = 'keranjang'"
       throw $e;
     }
   }
+  // Data satu pembayaran untuk menyajikan bukti (pemilik atau admin).
+  public function getPembayaranUntukBukti(string $kodeBayar): ?array
+  {
+    $stmt = $this->db->prepare(
+      "SELECT b.kode_bayar, b.ft_byr, s.user_plg
+       FROM t_bayar b INNER JOIN t_sewa s ON s.kode_sewa = b.kode_sewa
+       WHERE b.kode_bayar = ? LIMIT 1"
+    );
+    if (!$stmt) {
+      throw new RuntimeException('Pembacaan bukti gagal disiapkan.');
+    }
+    $stmt->bind_param('s', $kodeBayar);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row;
+  }
 }

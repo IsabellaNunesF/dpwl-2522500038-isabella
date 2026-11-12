@@ -56,3 +56,5 @@ $route['transaksi/pembayaran'] = 'Transaksi_controller/pembayaran';
 $route['transaksi/unggah-bukti'] = 'Transaksi_controller/unggahBukti';
 // Bukti transfer dilayani lewat controller (hanya admin atau pemilik), ?kode_bayar=
 $route['transaksi/bukti'] = 'Transaksi_controller/bukti';
+$route['admin/pembayaran'] = 'Pembayaran_controller/index';
+$route['admin/pembayaran/verifikasi'] = 'Pembayaran_controller/verifikasi';

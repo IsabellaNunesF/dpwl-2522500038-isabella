@@ -546,7 +546,6 @@ class Transaksi_controller extends Controller
       http_response_code(500);
       exit('Bukti pembayaran belum dapat ditampilkan.');
     }
-
     if ($row === null) {
       http_response_code(404);
       exit('Pembayaran tidak ditemukan.');
