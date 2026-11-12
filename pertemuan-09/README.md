@@ -22,3 +22,8 @@ Periksa t_bayar.ft_byr dan berkas pada uploads/bukti/.
 Buka menu Transaksi Saya dan periksa daftar transaksi.
 - Hasil Aktual: Setelah checkout penyewa diarahkan ke halaman pembayaran; validasi berkas berjalan; bukti tersimpan dan tampil.
 - Status: Berhasil
+
+## 5. Tahap E: Model Verifikasi Pembayaran
+- Langkah Pengujian: Menambahkan getPembayaranUntukBukti(), getDaftarPembayaran(), dan verifikasiPembayaran(), lalu memeriksa aplikasi dan penyajian bukti lewat transaksi/bukti.
+- Hasil Aktual: Model berhasil ditambahkan. Verifikasi valid mengubah t_sewa menjadi disetujui, sedangkan verifikasi tolak membiarkan t_sewa tetap diajukan.
+- Status: Berhasil

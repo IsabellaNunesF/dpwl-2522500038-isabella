@@ -1117,4 +1117,136 @@ AND status_sewa = 'keranjang'"
       throw $e;
     }
   }
+  // Admin: daftar pembayaran (opsional filter status) beserta info sewa.
+  public function getDaftarPembayaran(?string $status = null): array
+  {
+    $sql = "SELECT b.kode_bayar, b.tgl_wkt_byr, b.ft_byr, b.mtode_byr,
+                   b.jns_byr, b.nominal, b.sttus_byr, b.tgl_wkt_ver,
+                   b.kode_sewa, s.status_sewa, s.user_plg,
+                   s.tgl_mulai, s.tgl_selesai, p.nm_lngkp,
+                   COALESCE((SELECT SUM(x.hrg_sewa * x.n_hari)
+                             FROM t_pilih x WHERE x.kode_sewa = s.kode_sewa), 0) AS total
+            FROM t_bayar b
+            INNER JOIN t_sewa s ON s.kode_sewa = b.kode_sewa
+            LEFT JOIN t_penyewa p ON p.user_plg = s.user_plg";
+    $params = [];
+    $types = '';
+    if ($status !== null) {
+      $sql .= " WHERE b.sttus_byr = ?";
+      $params[] = $status;
+      $types .= 's';
+    }
+    $sql .= " ORDER BY b.tgl_wkt_byr DESC, b.kode_bayar DESC";
+
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) {
+      throw new RuntimeException('Daftar pembayaran gagal disiapkan.');
+    }
+    if ($params) {
+      $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    $hasil = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $hasil;
+  }
+
+  // Admin: verifikasi DP. $aksi = 'valid' | 'invalid'.
+  // valid  -> pembayaran valid + transaksi 'diajukan' menjadi 'disetujui'.
+  // invalid-> pembayaran invalid; transaksi tetap 'diajukan' agar penyewa
+  //           dapat mengunggah ulang bukti.
+  public function verifikasiPembayaran(string $kodeBayar, string $aksi): void
+  {
+    if (!in_array($aksi, ['valid', 'invalid'], true)) {
+      throw new InvalidArgumentException('Aksi verifikasi tidak valid.');
+    }
+
+    $this->db->begin_transaction();
+    try {
+      $stmt = $this->db->prepare(
+        "SELECT kode_bayar, kode_sewa, ft_byr, mtode_byr, jns_byr, sttus_byr
+         FROM t_bayar WHERE kode_bayar = ? LIMIT 1 FOR UPDATE"
+      );
+      if (!$stmt) {
+        throw new RuntimeException('Pembacaan pembayaran gagal disiapkan.');
+      }
+      $stmt->bind_param('s', $kodeBayar);
+      $stmt->execute();
+      $bayar = $stmt->get_result()->fetch_assoc();
+      $stmt->close();
+
+      if ($bayar === null) {
+        throw new InvalidArgumentException('Pembayaran tidak ditemukan.');
+      }
+      if ($bayar['jns_byr'] !== 'dp') {
+        throw new InvalidArgumentException(
+          'Hanya pembayaran DP yang diverifikasi pada tahap ini.'
+        );
+      }
+      if ($bayar['sttus_byr'] !== 'pending') {
+        throw new InvalidArgumentException(
+          'Pembayaran ini sudah diverifikasi sebelumnya.'
+        );
+      }
+      if (
+        $aksi === 'valid' && $bayar['mtode_byr'] === 'transfer'
+        && empty($bayar['ft_byr'])
+      ) {
+        throw new InvalidArgumentException(
+          'Bukti transfer belum diunggah penyewa, pembayaran belum dapat divalidasi.'
+        );
+      }
+
+      $kodeSewa = $bayar['kode_sewa'];
+
+      $stmt = $this->db->prepare(
+        "SELECT status_sewa FROM t_sewa WHERE kode_sewa = ? LIMIT 1 FOR UPDATE"
+      );
+      $stmt->bind_param('s', $kodeSewa);
+      $stmt->execute();
+      $sewa = $stmt->get_result()->fetch_assoc();
+      $stmt->close();
+
+      if ($sewa === null || $sewa['status_sewa'] !== 'diajukan') {
+        throw new InvalidArgumentException(
+          'Transaksi tidak berstatus diajukan, verifikasi dibatalkan.'
+        );
+      }
+
+      $stmt = $this->db->prepare(
+        "UPDATE t_bayar SET sttus_byr = ?, tgl_wkt_ver = NOW()
+         WHERE kode_bayar = ? AND sttus_byr = 'pending'"
+      );
+      if (!$stmt) {
+        throw new RuntimeException('Pembaruan status pembayaran gagal disiapkan.');
+      }
+      $stmt->bind_param('ss', $aksi, $kodeBayar);
+      if (!$stmt->execute() || $stmt->affected_rows !== 1) {
+        $stmt->close();
+        throw new RuntimeException('Status pembayaran gagal diperbarui.');
+      }
+      $stmt->close();
+
+      if ($aksi === 'valid') {
+        $stmt = $this->db->prepare(
+          "UPDATE t_sewa SET status_sewa = 'disetujui'
+           WHERE kode_sewa = ? AND status_sewa = 'diajukan'"
+        );
+        if (!$stmt) {
+          throw new RuntimeException('Pembaruan status transaksi gagal disiapkan.');
+        }
+        $stmt->bind_param('s', $kodeSewa);
+        if (!$stmt->execute() || $stmt->affected_rows !== 1) {
+          $stmt->close();
+          throw new RuntimeException('Status transaksi gagal diperbarui.');
+        }
+        $stmt->close();
+      }
+
+      $this->db->commit();
+    } catch (\Throwable $e) {
+      $this->db->rollback();
+      throw $e;
+    }
+  }
 }
