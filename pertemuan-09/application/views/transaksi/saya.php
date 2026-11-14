@@ -72,8 +72,8 @@ $badgeDp = [
               $bs = $badgeSewa[$row['status_sewa']] ?? ['bg-secondary', $row['status_sewa']];
               $bd = $badgeDp[(string) ($row['status_dp'] ?? '')] ?? null;
               $perluBukti = $row['status_sewa'] === 'diajukan'
-                && in_array((string) $row['status_dp'], ['pending', 'invalid'], true)
-                && ((string) $row['status_dp'] === 'invalid' || empty($row['ft_byr']));
+                && (string) $row['status_dp'] === 'pending'
+                && empty($row['ft_byr']);
               ?>
               <tr>
                 <td><?= $e($row['kode_sewa']) ?></td>

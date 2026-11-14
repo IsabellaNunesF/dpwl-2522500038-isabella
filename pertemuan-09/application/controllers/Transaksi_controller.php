@@ -588,7 +588,7 @@ class Transaksi_controller extends Controller
 
   private function folderBukti(): string
   {
-    return dirname(APPPATH) . '/uploads/bukti/';
+    return dirname(APPPATH) . '/uploads/bayar/';
   }
 
   private function simpanFileBukti(): array

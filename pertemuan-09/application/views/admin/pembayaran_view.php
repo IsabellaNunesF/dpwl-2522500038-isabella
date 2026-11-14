@@ -89,7 +89,8 @@ $tab = [
                 $bolehValid = $st === 'pending'
                   && $item['status_sewa'] === 'diajukan'
                   && ($item['mtode_byr'] !== 'transfer' || $adaBukti);
-                $bolehTolak = $st === 'pending' && $item['status_sewa'] === 'diajukan';
+                $bolehTolak = $bolehValid;
+                $detailUrl = site_url('admin/pembayaran/detail?kode_bayar=' . rawurlencode($item['kode_bayar']));
                 ?>
                 <tr>
                   <td><?= (int) $no + 1 ?></td>
@@ -131,6 +132,9 @@ $tab = [
                     <?php endif; ?>
                   </td>
                   <td>
+                    <a href="<?= $e($detailUrl) ?>" class="btn btn-info btn-xs">
+                      <i class="fa fa-search"></i> Detail
+                    </a>
                     <?php if ($st === 'pending'): ?>
                       <form method="post" style="display: inline"
                         action="<?= $e(site_url('admin/pembayaran/verifikasi')) ?>"
@@ -146,17 +150,16 @@ $tab = [
                       </form>
                       <form method="post" style="display: inline"
                         action="<?= $e(site_url('admin/pembayaran/verifikasi')) ?>"
-                        onsubmit="return confirm('Tolak pembayaran <?= $e($item['kode_bayar']) ?>? Penyewa dapat mengunggah ulang bukti.');">
+                        onsubmit="return confirm('Tolak pembayaran <?= $e($item['kode_bayar']) ?>? Transaksi akan ditolak.');">
                         <?= csrf_field() ?>
                         <input type="hidden" name="kode_bayar" value="<?= $e($item['kode_bayar']) ?>">
                         <input type="hidden" name="aksi" value="invalid">
                         <input type="hidden" name="status_filter" value="<?= $e($status) ?>">
-                        <button type="submit" class="btn btn-danger btn-xs" <?= $bolehTolak ? '' : 'disabled' ?>>
+                        <button type="submit" class="btn btn-danger btn-xs"
+                          <?= $bolehTolak ? '' : 'disabled title="Bukti transfer belum tersedia"' ?>>
                           <i class="fa fa-times"></i> Tolak
                         </button>
                       </form>
-                    <?php else: ?>
-                      <span class="text-muted">&mdash;</span>
                     <?php endif; ?>
                   </td>
                 </tr>

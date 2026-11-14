@@ -22,7 +22,7 @@ $statusDp = $dp['sttus_byr'] ?? null;
 $adaBukti = $dp !== null && !empty($dp['ft_byr']);
 $bolehUnggah = $dp !== null
   && ($transaksi['status_sewa'] ?? '') === 'diajukan'
-  && in_array($statusDp, ['pending', 'invalid'], true);
+  && $statusDp === 'pending';
 
 $flashType = (string) ($flash['type'] ?? '');
 $flashMessage = (string) ($flash['message'] ?? '');
@@ -134,7 +134,7 @@ $buktiUrl = $dp !== null
 
         <?php if ($statusDp === 'invalid'): ?>
           <div class="alert alert-danger">
-            Pembayaran DP ditolak oleh admin. Silakan unggah ulang bukti transfer yang jelas dan sesuai nominal.
+            Pembayaran DP ditolak oleh admin dan transaksi ini ditolak. Silakan buat transaksi baru bila masih ingin menyewa.
           </div>
         <?php elseif ($statusDp === 'valid'): ?>
           <div class="alert alert-success">
