@@ -59,3 +59,9 @@ $route['transaksi/bukti'] = 'Transaksi_controller/bukti';
 $route['admin/pembayaran'] = 'Pembayaran_controller/index';
 $route['admin/pembayaran/detail'] = 'Pembayaran_controller/detail';
 $route['admin/pembayaran/verifikasi'] = 'Pembayaran_controller/verifikasi';
+
+// Route P10 - Pelunasan dan Dokumen Transaksi (hanya admin)
+$route['admin/pembayaran/pelunasan'] = 'Pembayaran_controller/pelunasanIndex';
+$route['admin/pembayaran/pelunasan/proses/(:any)'] = 'Pembayaran_controller/prosesPelunasan/$1';
+$route['admin/pembayaran/dokumen/(:any)'] = 'Pembayaran_controller/dokumenTransaksi/$1';
+$route['admin/pembayaran/pelunasan/(:any)'] = 'Pembayaran_controller/pelunasanDetail/$1';
