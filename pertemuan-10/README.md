@@ -116,3 +116,45 @@ Isi dengan hasil aktual setelah pengujian:
 | 7 | Pelunasan mengubah `status_sewa` menjadi `lunas` | `<ISI>` | `<ISI>` |
 | 8 | Status kendaraan tidak berubah | `<ISI>` | `<ISI>` |
 | 9 | Kegagalan proses menyebabkan ROLLBACK | `<ISI>` | `<ISI>` |
+
+## 8. Kendala, Debugging, dan Perbaikan
+- Tahap A: tidak ada.
+- Tahap B: tidak ada.
+- Tahap C: `<ISI bila ada kendala; jika tidak ada tulis "tidak ada">`
+- Tahap D: `checkout()` P9 belum memakai named lock `dpwl_payment_code_sequence` seperti yang dirujuk modul (C.3). Perbaikan: lock diambil sebelum transaksi dimulai dan dilepas pada `finally`.
+- Tahap D: folder `uploads/bayar/` privat (`.htaccess` Require all denied), sehingga tautan `base_url('uploads/bayar/...')` pada contoh modul akan 403. Perbaikan: tautan bukti memakai `transaksi/bukti?kode_bayar=` (dilayani controller P9, khusus admin/pemilik).
+- Tahap D: contoh modul memakai `$_SESSION['flash_pembayaran']`, sedangkan P9 memakai `set_flash_message()` / `get_flash_message()`. Perbaikan: P10 memakai helper flash P9 agar konsisten.
+- Tahap D/F: formulir pelunasan ditambah `csrf_field()` dan `csrf_validate()` seperti P9 (POST admin).
+- Tahap E: `routes.php` dan `router.php` diawali baris kosong sebelum `<?php` (dapat memicu "headers already sent"); baris kosong dihapus.
+- Pengujian fungsional D–G: `<ISI hasil aktual>`
+
+## 9. Riwayat Commit
+| Tahap | Pesan Commit |
+|---|---|
+| A | Menyiapkan artefak P9 untuk baseline pengembangan P10 |
+| B | Menambahkan status lunas pada transaksi P10 |
+| C | Mengimplementasikan model pelunasan P10 |
+| D | Menambahkan controller pelunasan dan dokumen transaksi P10 |
+| E | Menambahkan route dan menu pelunasan P10 |
+| F | Menambahkan view daftar dan detail pelunasan P10 |
+| G | Membuat View dokumen transaksi P10 |
+
+## 10. Pengujian Fungsional Tahap D–G
+Isi dengan hasil aktual setelah menjalankan aplikasi:
+| No | Skenario | Hasil Aktual | Status |
+|---|---|---|---|
+| 1 | Menu Pelunasan Transaksi tampil di sidebar admin dan membuka daftar | `<ISI>` | `<ISI>` |
+| 2 | Daftar hanya memuat transaksi `disetujui` dengan sisa > 0 (dan `lunas`) | `<ISI>` | `<ISI>` |
+| 3 | Detail / Proses membuka transaksi yang sesuai (kode `INV~...`) | `<ISI>` | `<ISI>` |
+| 4 | Pelunasan tunai: berhasil, status `lunas`, tanpa bukti | `<ISI>` | `<ISI>` |
+| 5 | Pelunasan transfer tanpa bukti ditolak | `<ISI>` | `<ISI>` |
+| 6 | Pelunasan transfer dengan bukti valid (JPG/PNG/WEBP ≤ 5 MB) berhasil | `<ISI>` | `<ISI>` |
+| 7 | Berkas bukan gambar / > 5 MB ditolak | `<ISI>` | `<ISI>` |
+| 8 | Transaksi `lunas` tidak menampilkan formulir lagi | `<ISI>` | `<ISI>` |
+| 9 | Pelunasan kedua untuk transaksi yang sama ditolak | `<ISI>` | `<ISI>` |
+| 10 | Akses tanpa login admin dialihkan ke login | `<ISI>` | `<ISI>` |
+| 11 | Akses GET ke route proses mendapat 405 | `<ISI>` | `<ISI>` |
+| 12 | Status kendaraan di `t_mobil` tidak berubah | `<ISI>` | `<ISI>` |
+| 13 | Dokumen transaksi tampil lengkap (transaksi, penyewa, kendaraan, riwayat DP + pelunasan, ringkasan) | `<ISI>` | `<ISI>` |
+| 14 | Cetak / Simpan sebagai PDF: tombol tidak ikut tercetak, tata letak tidak terpotong | `<ISI>` | `<ISI>` |
+| 15 | Fitur P9 (DP, unggah bukti, verifikasi admin, checkout) tetap berjalan | `<ISI>` | `<ISI>` |
