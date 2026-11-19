@@ -7,7 +7,7 @@ Lanjutan aplikasi Sistem Informasi Penyewaan Kendaraan (PHP 8.4, homemade MVC, M
 - NIM    : 2522500038
 - Kelas  : SI3A
 
-## 2. Artefak dan Kondisi Awal
+## A. ## 2. Artefak dan Kondisi Awal
 - Baseline  : hasil akhir P9 (`pertemuan-09`), disalin ke workspace `dpwl-nim\`.
 - Lingkungan: Laragon (Apache + MySQL), PHP 8.4, URL `http://localhost/dpwl-nim/`.
 - Backup basis data sebelum P10: `<nama-file>.sql`.
@@ -47,3 +47,24 @@ Temuan baseline: tidak ada galat yang menghambat P10.
 
 ## 8. Riwayat Commit
 - Menyiapkan artefak P9 untuk baseline pengembangan P10
+
+## 6. Perubahan Struktur Basis Data
+### Tahap B — Status `lunas` pada `t_sewa.status_sewa`
+Nilai ENUM `lunas` ditambahkan agar transaksi yang sudah dilunasi dapat dibedakan dari transaksi `disetujui`. Seluruh nilai lama dipertahankan. Status kendaraan pada `t_mobil` tidak diubah.
+
+SQL yang dijalankan (satu kali):
+
+    ALTER TABLE `t_sewa`
+      CHANGE `status_sewa` `status_sewa`
+      ENUM('diajukan','disetujui','ditolak','aktif','selesai','batal','keranjang','lunas')
+      CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT 'keranjang';
+
+Pemeriksaan:
+| No | Pemeriksaan | Hasil Aktual | Status |
+|---|---|---|---|
+| 1 | Tabel `t_sewa` pada tab Structure dapat dibuka | Dapat dibuka | Berhasil |
+| 2 | Kolom `status_sewa` diperiksa | Kolom ENUM ditemukan | Berhasil |
+| 3 | Nilai `lunas` tersedia | Tersedia pada urutan ke-8 | Berhasil |
+| 4 | Nilai ENUM lama tetap ada | Ketujuh nilai lama tetap ada | Berhasil |
+| 5 | Hanya kolom `status_sewa` yang berubah | Kolom lain dan data lama tidak berubah | Berhasil |
+Kendala: tidak ada.

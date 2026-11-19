@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Nov 12, 2026 at 08:36 AM
+-- Generation Time: Nov 19, 2026 at 08:33 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -76,7 +76,12 @@ INSERT INTO `t_bayar` (`kode_bayar`, `tgl_wkt_byr`, `ft_byr`, `mtode_byr`, `jns_
 ('PAY/20261031/01', '2026-10-31 23:23:03', NULL, 'transfer', 'dp', 150000, 'pending', NULL, 'INV/20261031/01'),
 ('PAY/20261031/02', '2026-10-31 23:23:29', NULL, 'transfer', 'dp', 135000, 'pending', NULL, 'INV/20261031/02'),
 ('PAY/20261031/03', '2026-10-31 23:28:56', NULL, 'transfer', 'dp', 135000, 'pending', NULL, 'INV/20261031/03'),
-('PAY/20261031/04', '2026-10-31 23:32:27', NULL, 'transfer', 'dp', 135000, 'pending', NULL, 'INV/20261031/04');
+('PAY/20261031/04', '2026-10-31 23:32:27', NULL, 'transfer', 'dp', 135000, 'pending', NULL, 'INV/20261031/04'),
+('PAY/20261112/01', '2026-11-12 16:12:27', NULL, 'transfer', 'dp', 180000, 'pending', NULL, 'INV/20261112/01'),
+('PAY/20261112/02', '2026-11-12 16:38:56', 'ft_byr_20261112093856_31a5c034b939a27f.jpg', 'transfer', 'dp', 135000, 'valid', '2026-11-12 16:51:08', 'INV/20261112/02'),
+('PAY/20261114/01', '2026-11-14 09:32:43', 'ft_byr_20261114023243_8ae78ed91d67dd1b.jpg', 'transfer', 'dp', 150000, 'valid', '2026-11-14 09:34:15', 'INV/20261114/01'),
+('PAY/20261114/02', '2026-11-14 09:49:08', 'ft_byr_20261114024908_a08282fa3a703bf4.jpg', 'transfer', 'dp', 150000, 'valid', '2026-11-14 09:49:57', 'INV/20261114/02'),
+('PAY/20261114/03', '2026-11-14 09:50:54', 'ft_byr_20261114025054_592e5179da126840.jpg', 'transfer', 'dp', 135000, 'invalid', '2026-11-14 09:51:18', 'INV/20261114/03');
 
 -- --------------------------------------------------------
 
@@ -266,7 +271,12 @@ INSERT INTO `t_pilih` (`kode_sewa`, `no_plat`, `hrg_sewa`, `n_hari`) VALUES
 ('INV/20261031/01', 'BN 1194 AB', 500000, 1),
 ('INV/20261031/02', 'BN 1611 XX', 450000, 1),
 ('INV/20261031/03', 'BN 1611 XX', 450000, 1),
-('INV/20261031/04', 'BN 1611 XX', 450000, 1);
+('INV/20261031/04', 'BN 1611 XX', 450000, 1),
+('INV/20261112/01', 'BN 1759 PJ', 600000, 1),
+('INV/20261112/02', 'BN 1611 XX', 450000, 1),
+('INV/20261114/01', 'BN 1194 AB', 500000, 1),
+('INV/20261114/02', 'BN 1194 AB', 500000, 1),
+('INV/20261114/03', 'BN 1611 XX', 450000, 1);
 
 -- --------------------------------------------------------
 
@@ -279,7 +289,7 @@ CREATE TABLE `t_sewa` (
   `tgl_mulai` date NOT NULL,
   `tgl_selesai` date NOT NULL,
   `wkt_ambil` time NOT NULL,
-  `status_sewa` enum('diajukan','disetujui','ditolak','aktif','selesai','batal','keranjang') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci DEFAULT 'keranjang',
+  `status_sewa` enum('diajukan','disetujui','ditolak','aktif','selesai','batal','keranjang','lunas') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci DEFAULT 'keranjang',
   `user_plg` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
@@ -300,7 +310,12 @@ INSERT INTO `t_sewa` (`kode_sewa`, `tgl_mulai`, `tgl_selesai`, `wkt_ambil`, `sta
 ('INV/20261031/01', '2026-10-31', '2026-11-01', '15:29:35', 'diajukan', 'Isabella'),
 ('INV/20261031/02', '2026-10-31', '2026-11-01', '16:23:22', 'diajukan', 'Isabella'),
 ('INV/20261031/03', '2026-10-31', '2026-11-01', '16:28:44', 'diajukan', 'Isabella'),
-('INV/20261031/04', '2026-10-31', '2026-11-01', '16:32:19', 'diajukan', 'Isabella');
+('INV/20261031/04', '2026-10-31', '2026-11-01', '16:32:19', 'diajukan', 'Isabella'),
+('INV/20261112/01', '2026-11-12', '2026-11-13', '09:12:16', 'diajukan', 'Isabella'),
+('INV/20261112/02', '2026-11-12', '2026-11-13', '09:38:12', 'disetujui', 'Isabella'),
+('INV/20261114/01', '2026-11-14', '2026-11-15', '02:31:24', 'disetujui', 'Isabella'),
+('INV/20261114/02', '2026-11-14', '2026-11-15', '02:47:27', 'disetujui', 'Isabella'),
+('INV/20261114/03', '2026-11-14', '2026-11-15', '02:50:36', 'ditolak', 'Isabella');
 
 --
 -- Indexes for dumped tables
