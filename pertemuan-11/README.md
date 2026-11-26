@@ -152,3 +152,48 @@ Pengujian skenario valid, tidak valid, dan kasus batas:
 
 Catatan atau kendala pengujian:
 Tidak ada kendala berdasarkan hasil pengujian.
+
+## G. Perbaikan Integrasi Pelunasan dan Serah Terima
+
+### G.1. Masalah yang Ditemukan
+Setelah serah terima dikonfirmasi pada halaman Serah Terima Kendaraan, transaksi yang bersangkutan tidak lagi tampil pada halaman Pelunasan Transaksi (P10), padahal transaksi tersebut masih dapat memiliki sisa kewajiban pembayaran. Selain itu, ditemukan kesalahan tampilan pada halaman detail serah terima: kode PHP pada blok pesan notifikasi tercetak sebagai teks.
+
+### G.2. Analisis Penyebab
+Proses serah terima mengubah `t_sewa.status_sewa` dari `disetujui` menjadi `aktif`. Pada P10, seluruh logika pelunasan hanya mengenali status `disetujui` dan `lunas`, sehingga transaksi berstatus `aktif` tidak lagi dianggap memenuhi syarat. Pembatasan ini terdapat pada empat titik:
+- kueri `getDaftarPelunasan()` pada `Pembayaran_model.php` yang memfilter `status_sewa IN ('disetujui', 'lunas')`;
+- pemeriksaan status pada `simpanPelunasan()` pada `Pembayaran_model.php`;
+- kueri `UPDATE t_sewa SET status_sewa = 'lunas'` pada `simpanPelunasan()`;
+- variabel `$statusMemenuhiSyarat` pada `views/admin/pelunasan_detail.php`.
+
+Data transaksi tidak terhapus. Transaksi hanya tidak ditampilkan dan tidak dapat diproses karena status `aktif` tidak termasuk dalam kondisi yang diizinkan.
+
+Pada `views/admin/serah_terima_detail.php`, baris `$jenisFlash = ...` pada blok pesan notifikasi tidak diawali tag `<?php`, sehingga dianggap sebagai teks HTML biasa.
+
+### G.3. Perbaikan yang Dilakukan
+**`application/models/Pembayaran_model.php`**
+- `getDaftarPelunasan()` kini memfilter `status_sewa IN ('disetujui', 'aktif', 'lunas')`. Transaksi aktif yang masih memiliki sisa kewajiban tampil kembali pada daftar pelunasan.
+- `simpanPelunasan()` kini menerima status `disetujui`, `aktif`, dan `lunas`.
+- Pembaruan status menjadi `lunas` hanya dijalankan apabila status transaksi bukan `aktif`. Dengan demikian, transaksi yang sudah diserahterimakan tetap berstatus `aktif` setelah pelunasan dicatat, dan status serah terima tidak tertimpa. Pembayaran pelunasan tetap dicatat sebagai `valid` dalam transaksi basis data yang sama.
+
+**`application/views/admin/pelunasan_detail.php`**
+- `$statusMemenuhiSyarat` kini menerima status `disetujui`, `aktif`, dan `lunas`, sehingga tombol pencatatan pelunasan tampil untuk transaksi aktif yang masih memiliki sisa kewajiban.
+
+**`application/views/admin/serah_terima_detail.php`**
+- Penentuan `$jenisFlash` dibungkus dengan tag `<?php ... ?>` sehingga pesan notifikasi tampil sebagai alert dengan warna sesuai jenisnya.
+
+Tidak ada perubahan pada struktur basis data, route, maupun menu.
+
+### G.4. Pengujian Perbaikan
+Hasil pengujian:
+- Transaksi `disetujui` dengan DP `valid` diserahterimakan: `status_sewa` menjadi `aktif`.
+- Halaman Pelunasan Transaksi: transaksi `aktif` dengan sisa kewajiban tampil kembali pada daftar.
+- Halaman detail pelunasan transaksi `aktif`: informasi transaksi dan tombol Catat Pelunasan tampil.
+- Pencatatan pelunasan transaksi `aktif`: berhasil, record pembayaran `pelunasan` berstatus `valid` terbentuk, dan `status_sewa` tetap `aktif`.
+- Pencatatan pelunasan transaksi `disetujui`: tetap berhasil dan `status_sewa` menjadi `lunas` seperti pada P10.
+- Pelunasan ganda pada transaksi yang sama: tetap ditolak.
+- Pesan notifikasi pada detail serah terima: tampil sebagai alert tanpa kode PHP yang tercetak.
+- Fitur P9, P10, dan serah terima P11: tetap berfungsi.
+
+Catatan dan batasan:
+- Transaksi `aktif` yang sisa kewajibannya sudah nol dan berstatus bukan `lunas` tidak ditampilkan pada daftar pelunasan, sesuai filter sisa kewajiban pada P10.
+- Serah terima P11 tetap hanya menerima transaksi berstatus `disetujui`. Transaksi yang sudah berstatus `lunas` sebelum serah terima tidak tampil pada daftar serah terima.

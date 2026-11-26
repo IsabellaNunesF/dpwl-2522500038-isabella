@@ -56,10 +56,9 @@ $urlProses = site_url(
 
   <section class="content">
     <?php if (is_array($flash) && !empty($flash['message'])): ?>
-      $jenisFlash = ($flash['type'] ?? '') === 'success'
-      ? 'success'
-      : (($flash['type'] ?? '') === 'info' ? 'info' : 'danger');
-      ?>
+      <?php $jenisFlash = ($flash['type'] ?? '') === 'success'
+        ? 'success'
+        : (($flash['type'] ?? '') === 'info' ? 'info' : 'danger'); ?>
       <div class="alert alert-<?= $e($jenisFlash) ?> alert-dismissible">
         <button type="button" class="close" data-dismiss="alert">
           &times;

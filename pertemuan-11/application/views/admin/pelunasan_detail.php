@@ -23,7 +23,7 @@ foreach ($riwayatPembayaran as $pembayaran) {
   }
 }
 
-$statusMemenuhiSyarat = in_array($statusSewa, ['disetujui', 'lunas'], true);
+$statusMemenuhiSyarat = in_array($statusSewa, ['disetujui', 'aktif', 'lunas'], true);
 $bolehPelunasan = $statusMemenuhiSyarat
   && $sisaKewajiban > 0
   && !$adaRecordPelunasan;
