@@ -68,3 +68,27 @@ Controller `SerahTerima_controller.php` dibuat untuk menangani permintaan daftar
 Controller diintegrasikan dengan `SerahTerima_model` serta menerapkan pengendalian akses admin, pembatasan metode HTTP, validasi unggahan dokumen, dan pola Post-Redirect-Get (PRG).
 
 Pemeriksaan implementasi dilakukan dengan memastikan setiap method Controller menggunakan method Model yang sesuai. Pengujian fungsional melalui browser dilaksanakan setelah integrasi Route, View, dan Controller selesai.
+
+## E. Integrasi Route dan Menu Serah Terima
+
+### E.1. Menambahkan Route Daftar Serah Terima
+Route `admin/serah-terima` ditambahkan untuk menghubungkan URL daftar serah terima dengan method `index()` pada `SerahTerima_controller`.
+
+### E.2. Menambahkan Route Detail Transaksi
+Route `admin/serah-terima/detail/(:any)` digunakan untuk mengakses detail transaksi berdasarkan kode sewa. Parameter kode transaksi diteruskan kepada method `detail()` pada `SerahTerima_controller`.
+
+### E.3. Menambahkan Route Proses Serah Terima
+Route `admin/serah-terima/proses/(:any)` digunakan untuk menghubungkan pengiriman formulir serah terima dengan method `proses()` pada `SerahTerima_controller`. Route ini digunakan untuk memproses konfirmasi serah terima menggunakan metode HTTP POST.
+
+### E.4. Mengintegrasikan Menu Serah Terima pada Sidebar Admin
+Menu Serah Terima ditambahkan pada `sidebar.php` setelah menu Pelunasan Transaksi. Menu menggunakan URL yang dibentuk melalui `site_url('admin/serah-terima')` sehingga admin dapat mengakses halaman daftar serah terima melalui navigasi aplikasi.
+
+### E.5. Pemeriksaan Route dan Navigasi
+Pemeriksaan dilakukan terhadap kesesuaian tiga route P11 dengan method pada `SerahTerima_controller` serta tautan menu Serah Terima pada sidebar admin. Route dan menu dari pertemuan sebelumnya dipastikan tetap dipertahankan.
+
+Pengujian fungsional melalui peramban belum dilakukan pada tahap ini karena View serah terima akan diimplementasikan pada bagian F.
+
+### E.6. Hasil Integrasi Route dan Menu
+Integrasi P11 menambahkan tiga route untuk menangani daftar transaksi, detail transaksi, dan proses serah terima. Menu Serah Terima juga ditambahkan pada sidebar admin. Perubahan dilakukan dengan mempertahankan route dan menu yang telah digunakan pada pertemuan sebelumnya.
+
+Pengujian fungsional melalui peramban dilanjutkan setelah implementasi View dan integrasi MVC selesai.

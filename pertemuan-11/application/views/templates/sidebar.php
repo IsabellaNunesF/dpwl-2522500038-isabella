@@ -64,6 +64,11 @@
           <i class="fa fa-credit-card"></i> <span>Pelunasan Transaksi</span>
         </a>
       </li>
+      <li>
+        <a href="<?= htmlspecialchars(site_url('admin/serah-terima'), ENT_QUOTES, 'UTF-8') ?>">
+          <i class="fa fa-key"></i> <span>Serah Terima</span>
+        </a>
+      </li>
     </ul>
 
     <!-- /.sidebar-menu -->
