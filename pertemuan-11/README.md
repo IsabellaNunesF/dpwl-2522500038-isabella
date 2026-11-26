@@ -1,22 +1,18 @@
-## Ringkasan Hasil Pengujian Aktual P11
+# P11 – Pemenuhan atau Penyerahan Objek Transaksi dengan MVC
 
-### 1. Tahap A: Pemeriksaan Kesiapan Artefak P10
-* **Yang Dikerjakan / Berubah:**
-  * Artefak P10 disalin ke workspace `dpwl-2522500038/` sebagai baseline pengembangan kumulatif P11.
-  * Konfigurasi `base_url` pada `application/config/config.php` dan `RewriteBase` pada `.htaccess` diperiksa agar sesuai nama folder workspace.
-  * Struktur direktori MVC dan basis data `db_dpwl_isabella` diperiksa (tabel `t_sewa`, `t_pilih`, `t_mobil`, `t_bayar`, `t_penyewa`; kolom `t_sewa.status_sewa`, `t_sewa.wkt_ambil`, `t_penyewa.ft_ktp`, `t_penyewa.ft_sim_a`).
-  * Berkas `pertemuan-11/README.md` dibuat. Tidak ada perubahan source code dan struktur basis data.
-* **Langkah Pengujian:**
-  1. Menjalankan Laragon (Apache dan MySQL) lalu membuka `http://localhost/dpwl-2522500038/`.
-  2. Login sebagai admin dan memastikan halaman administrasi tampil.
-  3. Login sebagai penyewa dan memastikan halaman penyewa tampil.
-  4. Memeriksa pemilihan kendaraan dan keranjang transaksi.
-  5. Memeriksa checkout dan pengajuan transaksi.
-  6. Memeriksa unggah bukti pembayaran DP.
-  7. Memeriksa verifikasi DP oleh admin dan perubahan status pembayaran serta status transaksi.
-  8. Memeriksa pencatatan pelunasan oleh admin.
-  9. Memeriksa informasi dan dokumen transaksi.
-  10. Memeriksa informasi kendaraan dan riwayat pembayaran.
-  11. Menyiapkan transaksi uji berstatus `disetujui` dengan DP `valid` yang belum dilunasi.
-* **Hasil Aktual:** Seluruh fitur P10 berfungsi dengan baik dan siap digunakan sebagai baseline pengembangan P11. Struktur direktori, konfigurasi, dan basis data tersedia. Tidak ada kendala dan tidak ada perbaikan yang dilakukan.
-* **Status:** Berhasil
+## A. Dokumentasi Persiapan Baseline P10
+
+### A.1. Workspace dan Artefak P10
+Artefak P10 telah disalin ke workspace `dpwl-2522500038\` sebagai dasar pengembangan P11. Pengembangan dilakukan secara kumulatif dengan mempertahankan struktur dan fitur aplikasi sebelumnya.
+
+### A.2. Struktur Aplikasi dan Basis Data
+Struktur aplikasi homemade MVC dan basis data MySQL telah diperiksa. Tabel yang digunakan dalam pengembangan P11 meliputi `t_sewa`, `t_pilih`, `t_mobil`, `t_bayar`, dan `t_penyewa`.
+
+### A.3. Pemeriksaan Fitur P10
+Fitur transaksi dan pembayaran P10 telah diperiksa melalui aplikasi. Hasil pemeriksaan:
+- semua fitur pada P10 berhasil diuji.
+- Tidak ada kendala yang ditemukan.
+- Tidak ada perbaikan yang dilakukan.
+
+### A.4. Dokumentasi dan Repositori Git
+Dokumentasi P11 disiapkan pada `pertemuan-11\README.md`. Hasil pekerjaan disimpan dalam direktori `pertemuan-11` dan dikelola menggunakan Git.
