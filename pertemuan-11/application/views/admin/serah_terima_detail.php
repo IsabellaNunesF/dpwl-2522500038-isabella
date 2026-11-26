@@ -357,8 +357,7 @@ $urlProses = site_url(
             <button
               type="submit"
               class="btn btn-success"
-              onclick="return confirm('Apakah seluruh kendaraan dan dokumen pendukung telah diserahkan 
-kepada penyewa? Proses ini tidak dapat diulang.')">
+              onclick="return confirm('Apakah seluruh kendaraan dan dokumen pendukung telah diserahkan kepada penyewa? Proses ini tidak dapat diulang.')">
               <i class="fa fa-check"></i>
               Konfirmasi Serah Terima
             </button>

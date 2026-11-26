@@ -82,7 +82,7 @@ class Pembayaran_model
       $daftar,
       static fn(array $item): bool =>
       $item['sisa_kewajiban'] > 0 ||
-        $item['status_sewa'] === 'lunas'
+        in_array($item['status_sewa'], ['aktif', 'lunas'], true)
     ));
   }
 
@@ -536,41 +536,39 @@ class Pembayaran_model
 
       $stmt->close();
 
-      // Pelunasan berhasil dicatat. Status menjadi lunas hanya jika
-      // transaksi belum aktif; transaksi aktif tetap berstatus aktif.
-      if ($transaksi['status_sewa'] !== 'aktif') {
-        $stmt = $this->db->prepare(
-          "UPDATE t_sewa
-           SET status_sewa = 'lunas'
-           WHERE kode_sewa = ?
-             AND status_sewa IN ('disetujui', 'lunas')"
+      // Pelunasan berhasil dicatat; perbarui status transaksi menjadi
+      // lunas (dari disetujui atau aktif) dalam transaksi database yang sama.
+      $stmt = $this->db->prepare(
+        "UPDATE t_sewa
+         SET status_sewa = 'lunas'
+         WHERE kode_sewa = ?
+           AND status_sewa IN ('disetujui', 'aktif', 'lunas')"
+      );
+
+      if (!$stmt) {
+        throw new RuntimeException(
+          'Pembaruan status transaksi menjadi lunas gagal disiapkan.'
         );
-
-        if (!$stmt) {
-          throw new RuntimeException(
-            'Pembaruan status transaksi menjadi lunas gagal disiapkan.'
-          );
-        }
-
-        $stmt->bind_param('s', $kodeSewa);
-
-        if (!$stmt->execute()) {
-          $stmt->close();
-          throw new RuntimeException(
-            'Status transaksi gagal diperbarui menjadi lunas.'
-          );
-        }
-
-        if ($stmt->affected_rows !== 1) {
-          $stmt->close();
-          throw new RuntimeException(
-            'Status transaksi tidak berubah menjadi lunas. '
-              . 'Periksa kembali status transaksi.'
-          );
-        }
-
-        $stmt->close();
       }
+
+      $stmt->bind_param('s', $kodeSewa);
+
+      if (!$stmt->execute()) {
+        $stmt->close();
+        throw new RuntimeException(
+          'Status transaksi gagal diperbarui menjadi lunas.'
+        );
+      }
+
+      if ($stmt->affected_rows !== 1) {
+        $stmt->close();
+        throw new RuntimeException(
+          'Status transaksi tidak berubah menjadi lunas. '
+            . 'Periksa kembali status transaksi.'
+        );
+      }
+
+      $stmt->close();
 
       $this->db->commit();
       $transaksiDimulai = false;

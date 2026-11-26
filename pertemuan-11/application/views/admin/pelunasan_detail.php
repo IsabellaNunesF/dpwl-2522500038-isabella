@@ -24,6 +24,11 @@ foreach ($riwayatPembayaran as $pembayaran) {
 }
 
 $statusMemenuhiSyarat = in_array($statusSewa, ['disetujui', 'aktif', 'lunas'], true);
+// Transaksi dianggap lunas pembayarannya bila sisa kewajiban sudah nol,
+// walaupun status_sewa tetap aktif (kendaraan sudah diserahterimakan).
+$sudahLunas = $totalTransaksi > 0 && $sisaKewajiban <= 0;
+// Tampilan: transaksi aktif yang sudah lunas ditampilkan sebagai lunas.
+$statusTampil = ($statusSewa === 'aktif' && $sudahLunas) ? 'lunas' : $statusSewa;
 $bolehPelunasan = $statusMemenuhiSyarat
   && $sisaKewajiban > 0
   && !$adaRecordPelunasan;
@@ -74,7 +79,11 @@ $urlProses = site_url('admin/pembayaran/pelunasan/proses/' . str_replace('/', '~
           <dt>Waktu pengambilan</dt>
           <dd><?= $e($detailPelunasan['wkt_ambil'] ?? '') ?></dd>
           <dt>Status transaksi</dt>
-          <dd><?= $e($statusSewa) ?></dd>
+          <dd>
+            <span class="label label-<?= in_array($statusTampil, ['aktif', 'lunas'], true) ? 'success' : 'info' ?>">
+              <?= $e($statusTampil) ?>
+            </span>
+          </dd>
         </dl>
 
         <h4>Rincian Kendaraan</h4>
@@ -171,6 +180,8 @@ $urlProses = site_url('admin/pembayaran/pelunasan/proses/' . str_replace('/', '~
                         <?php /* Folder uploads/bayar bersifat privat (.htaccess), bukti dilayani lewat controller. */ ?>
                         <a href="<?= $e(site_url('transaksi/bukti?kode_bayar=' . rawurlencode((string) ($pembayaran['kode_bayar'] ?? '')))) ?>"
                           target="_blank" rel="noopener">Lihat bukti</a>
+                      <?php elseif (($pembayaran['mtode_byr'] ?? '') === 'tunai'): ?>
+                        <span class="label label-default">Tunai</span>
                       <?php else: ?>
                         -
                       <?php endif; ?>

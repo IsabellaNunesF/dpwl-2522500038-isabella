@@ -68,7 +68,23 @@ $e = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 
                     s.d.
                     <?= $e($item['tgl_selesai'] ?? '') ?>
                   </td>
-                  <td><?= $e($item['status_sewa'] ?? '') ?></td>
+                  <?php
+                  // Tampilan: transaksi aktif yang pembayarannya sudah lunas
+                  // (data sebelum perbaikan) ditampilkan sebagai lunas.
+                  $statusTampil = (string) ($item['status_sewa'] ?? '');
+                  if (
+                    $statusTampil === 'aktif'
+                    && (int) ($item['total_transaksi'] ?? 0) > 0
+                    && (int) ($item['sisa_kewajiban'] ?? 0) <= 0
+                  ) {
+                    $statusTampil = 'lunas';
+                  }
+                  ?>
+                  <td>
+                    <span class="label label-<?= in_array($statusTampil, ['aktif', 'lunas'], true) ? 'success' : 'info' ?>">
+                      <?= $e($statusTampil) ?>
+                    </span>
+                  </td>
                   <td>Rp <?= number_format((int) ($item['total_transaksi'] ?? 0), 0, ',', '.') ?></td>
                   <td>Rp <?= number_format((int) ($item['total_terbayar'] ?? 0), 0, ',', '.') ?></td>
                   <td><strong>Rp <?= number_format((int) ($item['sisa_kewajiban'] ?? 0), 0, ',', '.') ?></strong></td>
